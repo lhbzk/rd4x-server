@@ -1,41 +1,54 @@
 const express = require('express');
+const fs = require('fs');
 const app = express();
 
 app.use(express.json());
 
-const filaComandos = {};
-const LISTA_VIP = [4200878493]; // Seu ID do Roblox
+const VIP_FILE = './vips.json';
 
-app.post('/enviar-comando', (req, res) => {
-    const { autorId, alvoNome, comando } = req.body;
-
-    if (!autorId || !alvoNome || !comando) {
-        return res.status(400).json({ erro: "Dados incompletos" });
+// Função para ler a lista de VIPs
+function getVips() {
+    if (!fs.existsSync(VIP_FILE)) {
+        fs.writeFileSync(VIP_FILE, JSON.stringify([]));
     }
+    return JSON.parse(fs.readFileSync(VIP_FILE, 'utf-8'));
+}
 
-    if (!LISTA_VIP.includes(Number(autorId))) {
-        return res.status(403).json({ erro: "Acesso negado. Você não é VIP." });
-    }
+// Função para salvar a lista de VIPs
+function saveVips(vips) {
+    fs.writeFileSync(VIP_FILE, JSON.stringify(vips, null, 2));
+}
 
-    if (!filaComandos[alvoNome]) {
-        filaComandos[alvoNome] = [];
-    }
+// 1. Rota para o Script do Roblox CHECAR se a pessoa é VIP
+app.get('/check-vip', (req, res) => {
+    const userId = req.query.id;
+    if (!userId) return res.json({ vip: false, reason: "ID não fornecido" });
 
-    filaComandos[alvoNome].push(comando);
-    return res.json({ sucesso: true, mensagem: `Comando ${comando} enviado para ${alvoNome}` });
+    const vips = getVips();
+    const isVip = vips.includes(String(userId));
+
+    return res.json({ vip: isVip });
 });
 
-app.get('/checar-comando/:nome', (req, res) => {
-    const nomeJogador = req.params.nome;
+// 2. Rota para o Bot do Discord ADICIONAR um novo VIP
+app.post('/add-vip', (req, res) => {
+    const { userId, secretKey } = req.body;
 
-    if (filaComandos[nomeJogador] && filaComandos[nomeJogador].length > 0) {
-        const proximoComando = filaComandos[nomeJogador].shift();
-        return res.json({ temComando: true, comando: proximoComando });
+    // Senha de segurança para ninguém adicionar VIP sem autorização
+    if (secretKey !== "SUA_CHAVE_SECRETA_AQUI") {
+        return res.status(403).json({ success: false, message: "Acesso negado!" });
     }
 
-    return res.json({ temComando: false });
+    if (!userId) return res.status(400).json({ success: false, message: "ID inválido!" });
+
+    let vips = getVips();
+    if (!vips.includes(String(userId))) {
+        vips.push(String(userId));
+        saveVips(vips);
+    }
+
+    return res.json({ success: true, message: `ID ${userId} adicionado ao VIP!` });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
-         
