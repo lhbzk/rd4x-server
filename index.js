@@ -10,9 +10,9 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// CONFIGURAÇÕES DE IDs (Insira os IDs do Discord aqui para marcar diretamente)
-const ID_DONO = "COLOQUE_O_ID_DO_DONO_AQUI"; // Exemplo: "123456789012345678"
-const ID_CARGO_ADM = "COLOQUE_O_ID_DO_CARGO_ADM_AQUI"; // Exemplo: "987654321098765432"
+// CONFIGURAÇÕES DE IDs (Insira os IDs do Discord aqui)
+const ID_DONO = "COLOQUE_O_ID_DO_DONO_AQUI"; 
+const ID_CARGO_ADM = "COLOQUE_O_ID_DO_CARGO_ADM_AQUI"; 
 
 const client = new Client({
     intents: [
@@ -29,7 +29,7 @@ client.once('ready', () => {
 
 // Listener de Mensagens
 client.on('messageCreate', async (message) => {
-    // Ignora mensagens enviadas por bots
+    // Ignora mensagens de outros bots
     if (message.author.bot) return;
 
     const content = message.content.trim();
@@ -68,7 +68,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 4. COMANDO !ENCERRAR (Apaga qualquer canal de ticket)
+    // 4. COMANDO !ENCERRAR
     if (command === '!encerrar') {
         await message.channel.send('🔒 Encerrando e apagando este ticket em 5 segundos...');
         
@@ -76,25 +76,25 @@ client.on('messageCreate', async (message) => {
             try {
                 await message.channel.delete();
             } catch (err) {
-                console.error('Erro ao deletar o canal do ticket:', err);
+                console.error('Erro ao deletar o canal:', err);
                 await message.channel.send('⚠️ Não foi possível apagar o canal. Verifique se o bot tem a permissão "Gerenciar Canais".');
             }
         }, 5000);
         return;
     }
 
-    // 5. RESPOSTA AUTOMÁTICA DENTRO DO CANAL DE TICKET (Ex: ticket-scr1pt3r_09_23619)
+    // 5. RESPOSTA AUTOMÁTICA EM CANAIS DE TICKET (Correção do ||)
     const nomeCanal = message.channel.name.toLowerCase();
     
-    if (nomeCanal.startsWith('ticket-') or nomeCanal.includes('ticket')) {
+    if (nomeCanal.startsWith('ticket-') || nomeCanal.includes('ticket')) {
         const mencaoDono = ID_DONO !== "COLOQUE_O_ID_DO_DONO_AQUI" ? `<@${ID_DONO}>` : "**Dono**";
         const mencaoAdm = ID_CARGO_ADM !== "COLOQUE_O_ID_DO_CARGO_ADM_AQUI" ? `<@&${ID_CARGO_ADM}>` : "**ADMs**";
 
-        // Se o usuário mandou uma imagem (Comprovante)
+        // Se o usuário mandou imagem (Comprovante)
         if (message.attachments.size > 0) {
             await message.reply(`📸 Comprovante recebido com sucesso!\n⏳ Aguarde a confirmação do ${mencaoDono} ou dos ${mencaoAdm}.`);
         } 
-        // Se o usuário mandou mensagem normal (Nick) e não é um comando iniciado por !
+        // Se o usuário mandou texto (Nick) e não é um comando com '!'
         else if (!content.startsWith('!')) {
             await message.reply(`✅ Dados recebidos: **${message.content}**\n⏳ Aguarde a confirmação do ${mencaoDono} ou dos ${mencaoAdm}.`);
         }
