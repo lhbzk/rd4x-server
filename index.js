@@ -109,19 +109,39 @@ client.on('interactionCreate', async (interaction) => {
             });
         }
 
-        // Cria o novo canal privado
+        // Pega a categoria (pasta) onde o botão !painel está localizado
+        const categoriaPai = interaction.channel.parentId;
+
+        // Cria o canal privado JÁ com as permissões do Bot + dentro da Categoria
         const canal = await interaction.guild.channels.create({
             name: nomeCanal,
             type: ChannelType.GuildText,
+            parent: categoriaPai, // Cria na mesma categoria do painel
             permissionOverwrites: [
-                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+                { 
+                    id: interaction.guild.id, 
+                    deny: [PermissionsBitField.Flags.ViewChannel] // Esconde dos outros membros
+                },
+                { 
+                    id: interaction.user.id, 
+                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] // Libera para o cliente
+                },
+                {
+                    id: client.user.id,
+                    allow: [
+                        PermissionsBitField.Flags.ViewChannel, 
+                        PermissionsBitField.Flags.SendMessages, 
+                        PermissionsBitField.Flags.EmbedLinks,
+                        PermissionsBitField.Flags.AttachFiles
+                    ] // Libera permissão total para o próprio Bot
+                }
             ]
         });
 
+        // Envia a mensagem com a chave Pix dentro do ticket criado
         await canal.send(`Olá ${interaction.user}! Faça o pagamento na chave Pix abaixo:\n\n\`${CHAVE_PIX}\`\n\nApós o pagamento, envie aqui o **Comprovante** e o seu **Nick no Roblox**.`);
 
-        // Botão direto para o canal recém-criado
+        // Responde com o botão direto para ir ao ticket
         const rowIrCanal = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setLabel('Ir para o Ticket')
@@ -166,4 +186,4 @@ if (TOKEN) {
     client.login(TOKEN);
 } else {
     console.log("AVISO: DISCORD_TOKEN não configurado no ambiente.");
-}
+            }
