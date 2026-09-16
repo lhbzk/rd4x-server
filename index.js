@@ -84,80 +84,60 @@ client.on('messageCreate', async (message) => {
 
         return message.reply(`✅ VIP liberado por **${dias} dias** para o jogador **${jogador}**!`);
     }
+
+    // Comando !fechar: Fecha/Arquiva o tópico do ticket
+    if (message.content === '!fechar') {
+        if (message.channel.isThread()) {
+            await message.reply('🔒 Encerrando e arquivando este ticket...');
+            setTimeout(() => {
+                message.channel.setArchived(true).catch(() => {});
+            }, 2000);
+        } else {
+            message.reply('❌ Este comando só pode ser usado dentro de um tópico de ticket.');
+        }
+    }
 });
 
-// --- CLIQUE NO BOTÃO DE TICKET ---
+// --- CLIQUE NO BOTÃO DE TICKET (TÓPICO PRIVADO) ---
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
     if (interaction.customId === 'abrir_ticket') {
-        const nomeCanal = `ticket-${interaction.user.username.toLowerCase()}`;
-        const canalExistente = interaction.guild.channels.cache.find(c => c.name === nomeCanal);
+        const nomeTopico = `ticket-${interaction.user.username.toLowerCase()}`;
+        
+        // Verifica se já existe um tópico ativo com esse nome
+        const topicoExistente = interaction.channel.threads.cache.find(t => t.name === nomeTopico && !t.archived);
 
-        if (canalExistente) {
-            const rowIrCanal = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel('Ir para o Ticket')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(`https://discord.com/channels/${interaction.guild.id}/${canalExistente.id}`)
-            );
-
+        if (topicoExistente) {
             return interaction.reply({ 
-                content: `Você já possui um ticket aberto!`, 
-                components: [rowIrCanal],
+                content: `Você já possui um ticket aberto em ${topicoExistente}!`, 
                 flags: MessageFlags.Ephemeral 
             });
         }
 
-        // Pega a categoria (pasta) onde o botão !painel está localizado
-        const categoriaPai = interaction.channel.parentId;
-
-        // Cria o canal privado JÁ com as permissões do Bot + dentro da Categoria
-        const canal = await interaction.guild.channels.create({
-            name: nomeCanal,
-            type: ChannelType.GuildText,
-            parent: categoriaPai, // Cria na mesma categoria do painel
-            permissionOverwrites: [
-                { 
-                    id: interaction.guild.id, 
-                    deny: [PermissionsBitField.Flags.ViewChannel] // Esconde dos outros membros
-                },
-                { 
-                    id: interaction.user.id, 
-                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] // Libera para o cliente
-                },
-                {
-                    id: client.user.id,
-                    allow: [
-                        PermissionsBitField.Flags.ViewChannel, 
-                        PermissionsBitField.Flags.SendMessages, 
-                        PermissionsBitField.Flags.EmbedLinks,
-                        PermissionsBitField.Flags.AttachFiles
-                    ] // Libera permissão total para o próprio Bot
-                }
-            ]
+        // Cria o Tópico Privado dentro do canal onde está o botão
+        const topico = await interaction.channel.threads.create({
+            name: nomeTopico,
+            autoArchiveDuration: 1440, // Arquiva após 24 horas de inatividade
+            type: ChannelType.PrivateThread,
+            reason: `Ticket de VIP criado por ${interaction.user.tag}`
         });
 
-        // Envia a mensagem com a chave Pix dentro do ticket criado
-        await canal.send(`Olá ${interaction.user}! Faça o pagamento na chave Pix abaixo:\n\n\`${CHAVE_PIX}\`\n\nApós o pagamento, envie aqui o **Comprovante** e o seu **Nick no Roblox**.`);
+        // Adiciona o comprador diretamente ao tópico criado
+        await topico.members.add(interaction.user.id);
 
-        // Responde com o botão direto para ir ao ticket
-        const rowIrCanal = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('Ir para o Ticket')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://discord.com/channels/${interaction.guild.id}/${canal.id}`)
-        );
+        // Envia as instruções com o Pix dentro do Tópico Privado
+        await topico.send(`Olá ${interaction.user}! Faça o pagamento na chave Pix abaixo:\n\n\`${CHAVE_PIX}\`\n\nApós o pagamento, envie aqui o **Comprovante** e o seu **Nick no Roblox**.\n\n*(Digitem \`!fechar\` para encerrar este atendimento)*`);
 
+        // Responde a interação de forma privada apontando pro Tópico
         await interaction.reply({ 
-            content: `Ticket criado com sucesso! Clique no botão para ir até ele:`, 
-            components: [rowIrCanal],
+            content: `Ticket criado com sucesso! Clique aqui para acessar: ${topico}`, 
             flags: MessageFlags.Ephemeral 
         });
     }
 });
 
-// --- ROTA API PARA O ROBLOX ---
+// --- ROTA API PARA O ROBLOX / SCRIPT DELTA ---
 app.get('/checar-vip/:nome', (req, res) => {
     const nomeJogador = req.params.nome;
     const tempoVip = vips[nomeJogador];
@@ -186,4 +166,4 @@ if (TOKEN) {
     client.login(TOKEN);
 } else {
     console.log("AVISO: DISCORD_TOKEN não configurado no ambiente.");
-            }
+}
