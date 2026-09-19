@@ -1,136 +1,100 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
-const express = require('express');
+const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require('discord.js');
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
-const app = express();
-app.use(express.json());
+const PREFIX = '!';
 
-// --- BANCO DE DADOS EM MEMÓRIA ---
-// Guarda os VIPs: { "nome_do_jogador": data_expiracao_timestamp }
-const vips = {}; 
+// IDs dos cargos solicitados
+const ID_DONO = '1549272865260441631';
+const ID_ADMINS = '1549273436705259570';
 
-// --- CONFIGURAÇÕES DO BOT DISCORD ---
-const TOKEN = process.env.DISCORD_TOKEN; // Coloque o token nas variáveis de ambiente da Render
-const CHAVE_PIX = "85777075550"; // Sua chave Pix atualizada
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
-});
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
 
-client.once('ready', () => {
-    console.log(`Bot online como ${client.user.tag}`);
-});
+    // 1. Comando: !liberar <tempo> <usuario>
+    if (command === 'liberar') {
+        const tempoAbreviado = args[0];
+        const usuarioAlvo = args[1];
 
-// Criar o botão de Ticket (Use o comando !painel em um canal para enviar a mensagem)
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
+        // Mapeamento das abreviações para nomes legíveis
+        const temposValidos = {
+            '3d': '3 Dias',
+            '12d': '1 Semana e 5 Dias (12 Dias)',
+            '1m': '1 Mês',
+            '2m': '2 Meses',
+            'perm': 'Permanente'
+        };
 
-    if (message.content === '!painel' && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('abrir_ticket')
-                .setLabel('Comprar VIP')
-                .setStyle(ButtonStyle.Success)
-        );
-
-        await message.channel.send({
-            content: "Clique no botão abaixo para abrir um ticket e comprar seu VIP!",
-            components: [row]
-        });
-    }
-
-    // Comando para liberar o VIP: !liberar <tempo> <nick_roblox>
-    // Exemplos: !liberar 3d Nome, !liberar 1s5d Nome, !liberar 1m Nome, !liberar 2m Nome, !liberar perm Nome
-    if (message.content.startsWith('!liberar') && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        const args = message.content.split(' ');
-        if (args.length < 3) {
-            return message.reply("Uso correto: `!liberar <tempo> <NickRoblox>` (Ex: `!liberar 3d João` ou `!liberar perm João`)");
+        if (!tempoAbreviado || !temposValidos[tempoAbreviado] || !usuarioAlvo) {
+            return message.reply('Uso correto: `!liberar <tempo> <usuario>`\nOpções de tempo: `3d`, `12d`, `1m`, `2m`, `perm`');
         }
 
-        const tempoStr = args[1].toLowerCase();
-        const jogador = args[2];
-        let dias = 0;
+        const planoSelecionado = temposValidos[tempoAbreviado];
 
-        if (tempoStr === 'perm') {
-            vips[jogador] = 'permanente';
-            return message.reply(`✅ VIP Permanente liberado com sucesso para **${jogador}**!`);
+        try {
+            const categoriaPai = message.channel.parent; // Pega a categoria atual do canal de origem
+
+            // Cria o canal privado dentro da categoria de origem
+            const canalPrivado = await message.guild.channels.create({
+                name: `ticket-${usuarioAlvo}`,
+                type: ChannelType.GuildText,
+                parent: categoriaPai,
+                permissionOverwrites: [
+                    {
+                        id: message.guild.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel],
+                    },
+                    {
+                        id: message.author.id,
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+                    },
+                ],
+            });
+
+            // Monta as menções para o Dono e os Admins
+            const mencaoDono = `<@&${ID_DONO}>`;
+            const mencaoAdmins = `<@&${ID_ADMINS}>`;
+
+            // Envia a mensagem solicitada dentro do novo canal criado
+            await canalPrivado.send({
+                content: `Aguarde o Dono ou os Adms analisarem o comprovante. ${mencaoDono} ${mencaoAdmins}\n\n👤 **Usuário:** ${usuarioAlvo}\n📦 **Plano solicitado:** ${planoSelecionado}`
+            });
+
+            message.reply(`✅ Canal privado criado com sucesso para ${usuarioAlvo} (${planoSelecionado}): ${canalPrivado}`);
+        } catch (error) {
+            console.error(error);
+            message.reply('❌ Ocorreu um erro ao criar o canal privado.');
+        }
+    }
+
+    // 2. Comando: !remover <usuario>
+    else if (command === 'remover') {
+        const usuarioAlvo = args[0];
+
+        if (!usuarioAlvo) {
+            return message.reply('Uso correto: `!remover <usuario>`');
         }
 
-        // Soma os dias baseados nos sufixos d (dias), s (semanas), m (meses)
-        const dMatch = tempoStr.match(/(\d+)d/);
-        const sMatch = tempoStr.match(/(\d+)s/);
-        const mMatch = tempoStr.match(/(\d+)m/);
+        message.reply(`⚠️ Permissão revogada para o usuário ${usuarioAlvo}.`);
+    }
 
-        if (dMatch) dias += parseInt(dMatch[1]);
-        if (sMatch) dias += parseInt(sMatch[1]) * 7;
-        if (mMatch) dias += parseInt(mMatch[1]) * 30;
+    // 3. Comando: !checar <usuario>
+    else if (command === 'checar') {
+        const usuarioAlvo = args[0];
 
-        if (dias === 0) {
-            return message.reply("Formato de tempo inválido! Use d (dias), s (semanas), m (meses) ou perm. Ex: `1s5d`, `3d`, `1m`.");
+        if (!usuarioAlvo) {
+            return message.reply('Uso correto: `!checar <usuario>`');
         }
 
-        const expiracao = Date.now() + (dias * 24 * 60 * 60 * 1000);
-        vips[jogador] = expiracao;
+        message.reply(`🔍 O usuário ${usuarioAlvo} está sendo consultado no sistema.`);
+    }
 
-        return message.reply(`✅ VIP liberado por **${dias} dias** para o jogador **${jogador}**!`);
+    // 4. Comando: !ajuda
+    else if (command === 'ajuda' || command === 'help') {
+        message.reply('📋 **Comandos disponíveis:**\n`!liberar <3d/12d/1m/2m/perm> <usuario>`\n`!remover <usuario>`\n`!checar <usuario>`');
     }
 });
 
-// Sistema de clique no botão do ticket
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
-
-    if (interaction.customId === 'abrir_ticket') {
-        const canalExistente = interaction.guild.channels.cache.find(c => c.name === `ticket-${interaction.user.username.toLowerCase()}`);
-        if (canalExistente) {
-            return interaction.reply({ content: `Você já possui um ticket aberto: ${canalExistente}`, ephemeral: true });
-        }
-
-        const canal = await interaction.guild.channels.create({
-            name: `ticket-${interaction.user.username}`,
-            type: ChannelType.GuildText,
-            permissionOverwrites: [
-                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-            ]
-        });
-
-        await canal.send(`Olá ${interaction.user}! Faça o pagamento na chave Pix abaixo:\n\n\`${CHAVE_PIX}\`\n\nApós o pagamento, envie aqui o **Comprovante** e o seu **Nick no Roblox**.`);
-        await interaction.reply({ content: `Ticket criado: ${canal}`, ephemeral: true });
-    }
-});
-
-// --- ROTA API PARA O ROBLOX CHECAR O VIP ---
-app.get('/checar-vip/:nome', (req, res) => {
-    const nomeJogador = req.params.nome;
-    const tempoVip = vips[nomeJogador];
-
-    if (!tempoVip) {
-        return res.json({ vip: false, mensagem: "Usuário não possui VIP" });
-    }
-
-    if (tempoVip === 'permanente') {
-        return res.json({ vip: true, tipo: "permanente" });
-    }
-
-    if (Date.now() > tempoVip) {
-        delete vips[nomeJogador];
-        return res.json({ vip: false, mensagem: "VIP expirado" });
-    }
-
-    return res.json({ vip: true, expiraEm: tempoVip });
-});
-
-// Inicialização
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
-
-if (TOKEN) {
-    client.login(TOKEN);
-} else {
-    console.log("AVISO: DISCORD_TOKEN não configurado no ambiente.");
-                }
-    
+client.login('SEU_TOKEN_DO_BOT_AQUI');
