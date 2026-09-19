@@ -81,7 +81,6 @@ client.on('messageCreate', async (message) => {
         if (!nickRoblox) {
             return message.reply("⚠️ Uso correto: `!status [nick]`");
         }
-        // Aqui você integraria com a API do Render/Banco de dados se necessário
         await message.reply(`🔍 Consultando status de **${nickRoblox}** na API do Render... (Conta ativa/registrada)`);
         return;
     }
@@ -119,7 +118,6 @@ client.on('interactionCreate', async (interaction) => {
         const guild = interaction.guild;
         const member = interaction.member;
 
-        // Evita criar múltiplos tickets para o mesmo usuário se já houver um canal com o nome dele
         const nomeCanal = `ticket-${member.user.username}`.toLowerCase();
         const canalExistente = guild.channels.cache.find(c => c.name === nomeCanal);
         if (canalExistente) {
@@ -128,38 +126,35 @@ client.on('interactionCreate', async (interaction) => {
 
         await interaction.deferReply({ ephemeral: true });
 
-        // Cria o canal privado visível apenas para o usuário, o Dono e os Admins
         const channel = await guild.channels.create({
             name: nomeCanal,
             type: ChannelType.GuildText,
             permissionOverwrites: [
                 {
-                    id: guild.id, // Oculta para @everyone
+                    id: guild.id,
                     deny: [PermissionFlagsBits.ViewChannel],
                 },
                 {
-                    id: member.id, // Permite para quem clicou
+                    id: member.id,
                     allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
                 },
                 {
-                    id: ID_DONO, // Permite para o Dono
+                    id: ID_DONO,
                     allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
                 },
                 {
-                    id: ID_CARGO_ADMIN, // Permite para os Admins
+                    id: ID_CARGO_ADMIN,
                     allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
                 },
             ],
         });
 
-        // Mensagem enviada automaticamente dentro do novo canal de ticket privado
         let textoTicket = `Para adquirir seu Painel Admin, mande seu pix na chave abaixo.\n` +
             `\`${CHAVE_PIX}\`\n\n` +
             `Após isso, mande o comprovante, Seu Nick no Roblox e a confirmação da quantidade de dias.`;
 
         await channel.send({ content: `<@${member.user.id}>\n\n` + textoTicket });
 
-        // Mensagem de aviso para os responsáveis analisarem quando mandarem o comprovante
         let avisoResponsaveis = `Aguarde os responsáveis analisarem o comprovante. <@${ID_DONO}>, <@&${ID_CARGO_ADMIN}>`;
         await channel.send({
             content: avisoResponsaveis,
@@ -170,5 +165,4 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// Realiza o login do bot usando o Token do Render
 client.login(process.env.DISCORD_TOKEN);
