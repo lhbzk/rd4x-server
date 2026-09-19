@@ -1,16 +1,13 @@
 {
-  "name": "rd4x-discord-bot",
+  "name": "rd4x-server",
   "version": "1.0.0",
-  "description": "Bot do Discord para o RD4X Hub",
+  "description": "Bot e API do RD4X",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "express": "^4.18.2"
   }
 }
