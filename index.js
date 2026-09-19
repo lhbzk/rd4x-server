@@ -1,63 +1,100 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const express = require('express');
+const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require('discord.js');
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
-// Configuração do Servidor Web (API para o Roblox)
-const app = express();
-app.use(express.json());
+const PREFIX = '!';
 
-// Armazena o anúncio global atual
-let anuncioGlobal = {
-    titulo: "👑 Rd4X Creator 👑",
-    mensagem: "Bem-vindo ao RD4X Hub!"
-};
+// IDs dos cargos solicitados
+const ID_DONO = '1549272865260441631';
+const ID_ADMINS = '1549273436705259570';
 
-// Rota que o Hub do Roblox vai consultar para buscar o anúncio global
-app.get('/obter-anuncio-global', (req, res) => {
-    res.json(anuncioGlobal);
-});
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
-// Rota raiz para o UptimeRobot ficar com status Verdinho (200 OK)
-app.get('/', (req, res) => {
-    res.send('RD4X Hub API Online e Operacional!');
-});
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`[API] Servidor rodando na porta ${PORT}`);
-});
+    // 1. Comando: !liberar <tempo> <usuario>
+    if (command === 'liberar') {
+        const tempoAbreviado = args[0];
+        const usuarioAlvo = args[1];
 
-// Configuração do Bot do Discord
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
-});
+        // Mapeamento das abreviações para nomes legíveis
+        const temposValidos = {
+            '3d': '3 Dias',
+            '12d': '1 Semana e 5 Dias (12 Dias)',
+            '1m': '1 Mês',
+            '2m': '2 Meses',
+            'perm': 'Permanente'
+        };
 
-client.once('ready', () => {
-    console.log(`[Discord] Bot logado com sucesso como ${client.user.tag}`);
-});
-
-// Escuta mensagens enviadas no Discord
-client.on('messageCreate', async (message) => {
-    // Ignora mensagens de bots
-    if (message.author.bot) return;
-
-    // Verifica se a mensagem foi enviada exatamente no canal chamado 'anuncio-global'
-    if (message.channel.name === 'anuncio-global') {
-        const textoAnuncio = message.content.trim();
-        
-        if (textoAnuncio.length > 0) {
-            // Atualiza o cache global da API
-            anuncioGlobal.mensagem = textoAnuncio;
-            
-            // Reage à mensagem no Discord confirmando que foi sincronizada
-            await message.react('✅').catch(() => {});
-            console.log(`[Anúncio Global Atualizado]: "${textoAnuncio}" por ${message.author.tag}`);
+        if (!tempoAbreviado || !temposValidos[tempoAbreviado] || !usuarioAlvo) {
+            return message.reply('Uso correto: `!liberar <tempo> <usuario>`\nOpções de tempo: `3d`, `12d`, `1m`, `2m`, `perm`');
         }
+
+        const planoSelecionado = temposValidos[tempoAbreviado];
+
+        try {
+            const categoriaPai = message.channel.parent; // Pega a categoria atual do canal de origem
+
+            // Cria o canal privado dentro da categoria de origem
+            const canalPrivado = await message.guild.channels.create({
+                name: `ticket-${usuarioAlvo}`,
+                type: ChannelType.GuildText,
+                parent: categoriaPai,
+                permissionOverwrites: [
+                    {
+                        id: message.guild.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel],
+                    },
+                    {
+                        id: message.author.id,
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+                    },
+                ],
+            });
+
+            // Monta as menções para o Dono e os Admins
+            const mencaoDono = `<@&${ID_DONO}>`;
+            const mencaoAdmins = `<@&${ID_ADMINS}>`;
+
+            // Envia a mensagem solicitada dentro do novo canal criado
+            await canalPrivado.send({
+                content: `Aguarde o Dono ou os Adms analisarem o comprovante. ${mencaoDono} ${mencaoAdmins}\n\n👤 **Usuário:** ${usuarioAlvo}\n📦 **Plano solicitado:** ${planoSelecionado}`
+            });
+
+            message.reply(`✅ Canal privado criado com sucesso para ${usuarioAlvo} (${planoSelecionado}): ${canalPrivado}`);
+        } catch (error) {
+            console.error(error);
+            message.reply('❌ Ocorreu um erro ao criar o canal privado.');
+        }
+    }
+
+    // 2. Comando: !remover <usuario>
+    else if (command === 'remover') {
+        const usuarioAlvo = args[0];
+
+        if (!usuarioAlvo) {
+            return message.reply('Uso correto: `!remover <usuario>`');
+        }
+
+        message.reply(`⚠️ Permissão revogada para o usuário ${usuarioAlvo}.`);
+    }
+
+    // 3. Comando: !checar <usuario>
+    else if (command === 'checar') {
+        const usuarioAlvo = args[0];
+
+        if (!usuarioAlvo) {
+            return message.reply('Uso correto: `!checar <usuario>`');
+        }
+
+        message.reply(`🔍 O usuário ${usuarioAlvo} está sendo consultado no sistema.`);
+    }
+
+    // 4. Comando: !ajuda
+    else if (command === 'ajuda' || command === 'help') {
+        message.reply('📋 **Comandos disponíveis:**\n`!liberar <3d/12d/1m/2m/perm> <usuario>`\n`!remover <usuario>`\n`!checar <usuario>`');
     }
 });
 
-// Insira o Token do seu bot do Discord aqui ou utilize variáveis de ambiente no Render
-client.login(process.env.DISCORD_TOKEN || "SEU_TOKEN_DO_BOT_AQUI");
+client.login('SEU_TOKEN_DO_BOT_AQUI');
