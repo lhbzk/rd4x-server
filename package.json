@@ -1,7 +1,7 @@
 {
-  "name": "meu-bot-discord",
+  "name": "rd4x-discord-bot",
   "version": "1.0.0",
-  "description": "Bot do Discord configurado no Render",
+  "description": "Bot do Discord para o RD4X Hub",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
