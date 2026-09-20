@@ -16,18 +16,24 @@ app.get('/api/v2/whitelist', (req, res) => {
         return res.json({ success: false, whitelisted: false });
     }
 
+    // Se for o dono, libera automaticamente por segurança
+    if (nickRoblox === ID_DONO) {
+        return res.json({ success: true, whitelisted: true });
+    }
+
     // Verifica se o usuário está liberado na memória e se o tempo não expirou
     if (usuariosLiberados.has(nickRoblox)) {
         const expiraEm = usuariosLiberados.get(nickRoblox);
+        
+        // Se expiraEm for "perm", o acesso é vitalício
+        if (expiraEm === "perm") {
+            return res.json({ success: true, whitelisted: true });
+        }
+
         if (Date.now() > expiraEm) {
             usuariosLiberados.delete(nickRoblox);
             return res.json({ success: false, whitelisted: false, message: "Expirado" });
         }
-        return res.json({ success: true, whitelisted: true });
-    }
-
-    // Se for o dono, libera automaticamente por segurança
-    if (nickRoblox === ID_DONO) {
         return res.json({ success: true, whitelisted: true });
     }
 
@@ -86,7 +92,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
-    // 1. !painel (Agora responde de forma privada/efêmera apenas para quem pediu)
+    // 1. !painel (Responde de forma efêmera ou limpa)
     if (comando === '!painel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -96,16 +102,13 @@ client.on('messageCreate', async (message) => {
                 .setEmoji('🎫')
         );
 
-        // Apaga a mensagem digitada pelo usuário para manter o chat limpo
         await message.delete().catch(() => {});
 
-        // Envia uma mensagem visível apenas para o usuário que executou o comando
         await message.channel.send({
             content: `<@${message.author.id}>`,
             components: [row],
-            flags: 64 // Torna a mensagem efêmera (visível apenas para quem enviou o comando)
+            flags: 64
         }).catch(async () => {
-            // Caso ocorra em canal comum onde flag 64 falhe, envia normal mas avisa
             await message.channel.send({
                 content: `<@${message.author.id}> Clique em criar ticket abaixo para comprar o Painel Admin:`,
                 components: [row]
@@ -132,19 +135,46 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 3. !liberar [dias] [nick]
+    // 3. !liberar [tempo/abreviação] [nick] (Aceita perm, 30d, 1m, etc.)
     if (comando === '!liberar') {
-        const dias = parseInt(args[1]);
+        const tempoInput = args[1]?.toLowerCase();
         const nickRoblox = args[2];
-        if (isNaN(dias) || !nickRoblox) {
-            return message.reply("⚠️ Uso correto: `!liberar [dias] [nick]` (Ex: `!liberar 30 Joyce`)");
+
+        if (!tempoInput || !nickRoblox) {
+            return message.reply("⚠️ Uso correto: `!liberar [tempo] [nick]`\nExemplos de tempo: `perm`, `30d`, `7d`, `1m` (1 mês)");
         }
 
-        const tempoExpiracao = Date.now() + (dias * 24 * 60 * 60 * 1000);
+        let tempoExpiracao;
+        let textoTempoExibicao = "";
+
+        if (tempoInput === "perm" || tempoInput === "permanente") {
+            tempoExpiracao = "perm";
+            textoTempoExibicao = "permanente (vitalício)";
+        } else {
+            // Tenta extrair número e unidade (ex: 30d, 1m, ou apenas números como 30)
+            const match = tempoInput.match(/^(\d+)([a-z]*)$/);
+            if (!match) {
+                return message.reply("⚠️ Formato de tempo inválido! Use algo como `30d`, `perm` ou `1m`.");
+            }
+
+            const quantidade = parseInt(match[1]);
+            const unidade = match[2] || 'd'; // padrão para dias se não colocar letra
+
+            let diasTotais = quantidade;
+            if (unidade === 'm') {
+                diasTotais = quantidade * 30; // Considera 1 mês = 30 dias
+            } else if (unidade === 'h') {
+                diasTotais = quantidade / 24; // Horas
+            }
+
+            tempoExpiracao = Date.now() + (diasTotais * 24 * 60 * 60 * 1000);
+            textoTempoExibicao = `${quantidade} ${unidade === 'm' ? 'mês/meses' : 'dia(s)'}`;
+        }
+
         usuariosLiberados.set(nickRoblox, tempoExpiracao);
 
-        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${dias} dias**!`);
-        enviarLog(message.guild, "Painel Liberado", `O admin **${message.author.tag}** liberou o painel para **${nickRoblox}** por **${dias} dias**.`);
+        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${textoTempoExibicao}**!`);
+        enviarLog(message.guild, "Painel Liberado", `O admin **${message.author.tag}** liberou o painel para **${nickRoblox}** por **${textoTempoExibicao}**.`);
         return;
     }
 
@@ -164,9 +194,13 @@ client.on('messageCreate', async (message) => {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!status [nick]`");
         
-        if (usuariosLiberados.has(nickRoblox)) {
+        if (usuariosLiberados.has(nickRoblox) || nickRoblox === ID_DONO) {
+            if (nickRoblox === ID_DONO) {
+                return message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo (Dono)**.`);
+            }
+
             const expiraEm = usuariosLiberados.get(nickRoblox);
-            if (Date.now() > expiraEm) {
+            if (expiraEm !== "perm" && Date.now() > expiraEm) {
                 usuariosLiberados.delete(nickRoblox);
                 return message.reply(`🔴 O painel de **${nickRoblox}** **expirou**.`);
             }
@@ -182,8 +216,17 @@ client.on('messageCreate', async (message) => {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!tempo [nick]`");
 
+        if (nickRoblox === ID_DONO) {
+            return message.reply(`♾️ O painel do Dono (**${nickRoblox}**) é permanente.`);
+        }
+
         if (usuariosLiberados.has(nickRoblox)) {
             const expiraEm = usuariosLiberados.get(nickRoblox);
+            
+            if (expiraEm === "perm") {
+                return message.reply(`♾️ O painel de **${nickRoblox}** é **Permanente**.`);
+            }
+
             const tempoRestante = expiraEm - Date.now();
             if (tempoRestante <= 0) {
                 return message.reply(`⏱️ O painel de **${nickRoblox}** já expirou.`);
@@ -227,7 +270,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 10. !fechar - Apaga mensagens do painel/bot e deleta o canal com avaliação
+    // 10. !fechar
     if (comando === '!fechar') {
         if (!message.channel.name.startsWith('ticket-')) {
             return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
@@ -235,11 +278,9 @@ client.on('messageCreate', async (message) => {
 
         await message.reply("🔒 Limpando mensagens do painel, fechando o atendimento e enviando avaliação...");
 
-        // Tenta buscar as últimas mensagens do canal para apagar o comando !painel e a resposta do bot
         try {
             const mensagens = await message.channel.messages.fetch({ limit: 20 });
             for (const [id, msg] of mensagens) {
-                // Apaga mensagens enviadas pelo bot contendo o botão do painel ou mensagens de comando !painel
                 if (msg.author.id === client.user.id || msg.content.toLowerCase().includes('!painel')) {
                     await msg.delete().catch(() => {});
                 }
