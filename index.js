@@ -1,65 +1,53 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
-// --- SERVIDOR WEB E API (Para manter o bot acordado no Render e liberar o Roblox) ---
+// --- SERVIDOR WEB & API PARA O ROBLOX (Para manter o bot acordado e validar o Hub) ---
 const app = express();
 const port = process.env.PORT || 3000;
-
-app.use(express.json());
-
-// Bancos de dados em memória
-const usuariosLiberados = new Map(); 
-const blacklist = new Set(); 
 
 app.get('/', (req, res) => {
     res.send('RD4X Bot está online e ativo!');
 });
 
-// --- ROTA DE API DA WHITELIST (Integrada sem alterar o seu sistema) ---
-app.get('/api/whitelist', (req, res) => {
-    const nick = req.query.nick ? String(req.query.nick).trim() : "";
-
-    if (!nick) {
-        return res.json({ success: false, message: "Nick não fornecido." });
+// Rota de Whitelist consultada pelo seu Hub do Roblox via game:HttpGet
+app.get('/api/v2/whitelist', (req, res) => {
+    const nickRoblox = req.query.nick || req.query.userid;
+    if (!nickRoblox) {
+        return res.json({ success: false, whitelisted: false });
     }
 
-    let whitelisted = false;
-    let tempoExpiracao = 0;
-
-    for (const [nomeRegistrado, expiraEm] of usuariosLiberados.entries()) {
-        const isPerm = (expiraEm - Date.now()) > (50 * 365 * 24 * 60 * 60 * 1000);
-        
-        // Se expirou, remove da lista
-        if (!isPerm && Date.now() > expiraEm) {
-            usuariosLiberados.delete(nomeRegistrado);
-            continue;
+    // Verifica se o usuário está liberado na memória e se o tempo não expirou
+    if (usuariosLiberados.has(nickRoblox)) {
+        const expiraEm = usuariosLiberados.get(nickRoblox);
+        if (Date.now() > expiraEm) {
+            usuariosLiberados.delete(nickRoblox);
+            return res.json({ success: false, whitelisted: false, message: "Expirado" });
         }
-
-        // Compara ignorando maiúsculas/minúsculas
-        if (nomeRegistrado.toLowerCase() === nick.toLowerCase()) {
-            whitelisted = true;
-            tempoExpiracao = expiraEm;
-            break;
-        }
+        return res.json({ success: true, whitelisted: true });
     }
 
-    return res.json({
-        success: whitelisted,
-        whitelisted: whitelisted,
-        expiresAt: tempoExpiracao
-    });
+    // Se for o dono, libera automaticamente por segurança
+    if (nickRoblox === ID_DONO) {
+        return res.json({ success: true, whitelisted: true });
+    }
+
+    return res.json({ success: false, whitelisted: false });
 });
 
 app.listen(port, () => {
-    console.log(`[WEB] Servidor web rodando na porta ${port}`);
+    console.log(`[WEB] Servidor web e API rodando na porta ${port}`);
 });
 
 // --- CONFIGURAÇÕES E IDS ---
 const ID_DONO = "1549272865260441631";
 const ID_CARGO_ADMIN = "1549273436705259570";
 const CHAVE_PIX = "85777075550";
-const ID_CANAL_LOGS = "1549274555175018587"; // Canal configurado para envios e confirmações
+const ID_CANAL_LOGS = "SEU_ID_DE_CANAL_DE_LOGS_AQUI"; 
 const ID_CANAL_AVALIACOES = "SEU_ID_DE_CANAL_DE_AVALIACOES_AQUI"; 
+
+// Bancos de dados em memória
+const usuariosLiberados = new Map(); 
+const blacklist = new Set(); 
 
 // --- BOT DO DISCORD ---
 const client = new Client({
@@ -74,9 +62,9 @@ client.once('ready', () => {
     console.log(`[SUCESSO] Bot online e conectado como ${client.user.tag}!`);
 });
 
-// Função auxiliar para enviar logs no canal especificado
+// Função auxiliar para enviar logs no canal de staff
 async function enviarLog(guild, titulo, descricao, cor) {
-    if (!ID_CANAL_LOGS) return;
+    if (!ID_CANAL_LOGS || ID_CANAL_LOGS.includes("SEU_ID")) return;
     try {
         const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
         if (canalLogs) {
@@ -98,7 +86,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
-    // 1. !painel
+    // 1. !painel (Agora responde de forma privada/efêmera apenas para quem pediu)
     if (comando === '!painel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -108,13 +96,16 @@ client.on('messageCreate', async (message) => {
                 .setEmoji('🎫')
         );
 
+        // Apaga a mensagem digitada pelo usuário para manter o chat limpo
         await message.delete().catch(() => {});
 
+        // Envia uma mensagem visível apenas para o usuário que executou o comando
         await message.channel.send({
             content: `<@${message.author.id}>`,
             components: [row],
-            flags: 64 
+            flags: 64 // Torna a mensagem efêmera (visível apenas para quem enviou o comando)
         }).catch(async () => {
+            // Caso ocorra em canal comum onde flag 64 falhe, envia normal mas avisa
             await message.channel.send({
                 content: `<@${message.author.id}> Clique em criar ticket abaixo para comprar o Painel Admin:`,
                 components: [row]
@@ -141,49 +132,19 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 3. !liberar [sigla] [nick] (Utilizando as siglas do catálogo: 3d, 12d, 1m, 2m, perm)
+    // 3. !liberar [dias] [nick]
     if (comando === '!liberar') {
-        const siglaTempo = args[1]?.toLowerCase();
+        const dias = parseInt(args[1]);
         const nickRoblox = args[2];
-
-        if (!siglaTempo || !nickRoblox) {
-            return message.reply("⚠️ Uso correto: `!liberar [sigla] [nick]`\nOpções: `3d`, `12d`, `1m`, `2m`, `perm`\nExemplo: `!liberar 3d Joyce`");
+        if (isNaN(dias) || !nickRoblox) {
+            return message.reply("⚠️ Uso correto: `!liberar [dias] [nick]` (Ex: `!liberar 30 Joyce`)");
         }
 
-        let tempoExpiracao;
-        let textoTempo;
-
-        switch (siglaTempo) {
-            case '3d':
-                tempoExpiracao = Date.now() + (3 * 24 * 60 * 60 * 1000);
-                textoTempo = "3 dias (3d)";
-                break;
-            case '12d':
-                tempoExpiracao = Date.now() + (12 * 24 * 60 * 60 * 1000);
-                textoTempo = "1 semana e meia (12d)";
-                break;
-            case '1m':
-                tempoExpiracao = Date.now() + (30 * 24 * 60 * 60 * 1000);
-                textoTempo = "1 mês (1m)";
-                break;
-            case '2m':
-                tempoExpiracao = Date.now() + (60 * 24 * 60 * 60 * 1000);
-                textoTempo = "2 meses (2m)";
-                break;
-            case 'perm':
-                tempoExpiracao = Date.now() + (100 * 365 * 24 * 60 * 60 * 1000);
-                textoTempo = "Permanente (perm)";
-                break;
-            default:
-                return message.reply("❌ Opção de tempo inválida! Use: `3d`, `12d`, `1m`, `2m` ou `perm`.");
-        }
-
+        const tempoExpiracao = Date.now() + (dias * 24 * 60 * 60 * 1000);
         usuariosLiberados.set(nickRoblox, tempoExpiracao);
 
-        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${textoTempo}**!`);
-        
-        // Envia confirmação automática para o canal de ID especificado
-        enviarLog(message.guild, "Painel Liberado", `O admin **${message.author.tag}** liberou o painel para o nick **${nickRoblox}**.\n⏱️ **Duração:** ${textoTempo}`, 0x00ff00);
+        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${dias} dias**!`);
+        enviarLog(message.guild, "Painel Liberado", `O admin **${message.author.tag}** liberou o painel para **${nickRoblox}** por **${dias} dias**.`);
         return;
     }
 
@@ -205,13 +166,11 @@ client.on('messageCreate', async (message) => {
         
         if (usuariosLiberados.has(nickRoblox)) {
             const expiraEm = usuariosLiberados.get(nickRoblox);
-            const isPerm = (expiraEm - Date.now()) > (50 * 365 * 24 * 60 * 60 * 1000);
-
-            if (!isPerm && Date.now() > expiraEm) {
+            if (Date.now() > expiraEm) {
                 usuariosLiberados.delete(nickRoblox);
                 return message.reply(`🔴 O painel de **${nickRoblox}** **expirou**.`);
             }
-            await message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo** ${isPerm ? '(Permanente)' : ''}.`);
+            await message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo**.`);
         } else {
             await message.reply(`🔴 O jogador **${nickRoblox}** **não** possui registro ativo.`);
         }
@@ -226,12 +185,6 @@ client.on('messageCreate', async (message) => {
         if (usuariosLiberados.has(nickRoblox)) {
             const expiraEm = usuariosLiberados.get(nickRoblox);
             const tempoRestante = expiraEm - Date.now();
-            const isPerm = tempoRestante > (50 * 365 * 24 * 60 * 60 * 1000);
-
-            if (isPerm) {
-                return message.reply(`⏳ O painel de **${nickRoblox}** é **Permanente (perm)**!`);
-            }
-
             if (tempoRestante <= 0) {
                 return message.reply(`⏱️ O painel de **${nickRoblox}** já expirou.`);
             }
@@ -274,7 +227,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 10. !fechar
+    // 10. !fechar - Apaga mensagens do painel/bot e deleta o canal com avaliação
     if (comando === '!fechar') {
         if (!message.channel.name.startsWith('ticket-')) {
             return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
@@ -282,9 +235,11 @@ client.on('messageCreate', async (message) => {
 
         await message.reply("🔒 Limpando mensagens do painel, fechando o atendimento e enviando avaliação...");
 
+        // Tenta buscar as últimas mensagens do canal para apagar o comando !painel e a resposta do bot
         try {
             const mensagens = await message.channel.messages.fetch({ limit: 20 });
             for (const [id, msg] of mensagens) {
+                // Apaga mensagens enviadas pelo bot contendo o botão do painel ou mensagens de comando !painel
                 if (msg.author.id === client.user.id || msg.content.toLowerCase().includes('!painel')) {
                     await msg.delete().catch(() => {});
                 }
@@ -336,7 +291,7 @@ client.on('interactionCreate', async (interaction) => {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const channel = idGuildCreate = await guild.channels.create({
+        const channel = await guild.channels.create({
             name: nomeCanal,
             type: ChannelType.GuildText,
             parent: parentCategory,
@@ -363,8 +318,7 @@ client.on('interactionCreate', async (interaction) => {
             allowedMentions: { roles: [ID_CARGO_ADMIN] }
         });
 
-        // Envia notificação automática de abertura de ticket para o canal ID 1549274555175018587
-        enviarLog(guild, "Novo Ticket Aberto", `O usuário **${member.user.tag}** acabou de abrir um ticket no canal <#${channel.id}>.`, 0x0099ff);
+        enviarLog(guild, "Ticket Aberto", `Um novo ticket foi criado por **${member.user.tag}** no canal <#${channel.id}>.`);
 
         await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
     }
