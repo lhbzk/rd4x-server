@@ -92,7 +92,10 @@ client.on('messageCreate', async (message) => {
         
         await message.reply({
             content: msgSuporte,
-            allowedMentions: { users: [ID_DONO], roles: [ID_CARGO_ADMIN] }
+            allowedMentions: { 
+                users: [ID_DONO], 
+                roles: [ID_CARGO_ADMIN] 
+            }
         });
         return;
     }
@@ -117,6 +120,7 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'criar_ticket') {
         const guild = interaction.guild;
         const member = interaction.member;
+        const parentCategory = interaction.channel.parentId; // Pega a categoria do canal atual (ex: 💰Compra | Chaves)
 
         const nomeCanal = `ticket-${member.user.username}`.toLowerCase();
         const canalExistente = guild.channels.cache.find(c => c.name === nomeCanal);
@@ -126,9 +130,11 @@ client.on('interactionCreate', async (interaction) => {
 
         await interaction.deferReply({ ephemeral: true });
 
+        // Cria o canal dentro da mesma categoria do botão e define as permissões
         const channel = await guild.channels.create({
             name: nomeCanal,
             type: ChannelType.GuildText,
+            parent: parentCategory, // Mantém dentro da categoria certinha
             permissionOverwrites: [
                 {
                     id: guild.id,
@@ -149,16 +155,24 @@ client.on('interactionCreate', async (interaction) => {
             ],
         });
 
+        // 1. Envia a mensagem para o usuário com a chave Pix
         let textoTicket = `Para adquirir seu Painel Admin, mande seu pix na chave abaixo.\n` +
             `\`${CHAVE_PIX}\`\n\n` +
             `Após isso, mande o comprovante, Seu Nick no Roblox e a confirmação da quantidade de dias.`;
 
-        await channel.send({ content: `<@${member.user.id}>\n\n` + textoTicket });
+        await channel.send({ 
+            content: `<@${member.user.id}>\n\n` + textoTicket,
+            allowedMentions: { users: [member.user.id] }
+        });
 
+        // 2. Envia a mensagem de aviso marcando o Dono e o cargo de Admins corretamente
         let avisoResponsaveis = `Aguarde os responsáveis analisarem o comprovante. <@${ID_DONO}>, <@&${ID_CARGO_ADMIN}>`;
         await channel.send({
             content: avisoResponsaveis,
-            allowedMentions: { users: [ID_DONO], roles: [ID_CARGO_ADMIN] }
+            allowedMentions: { 
+                users: [ID_DONO], 
+                roles: [ID_CARGO_ADMIN] 
+            }
         });
 
         await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
