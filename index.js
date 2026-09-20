@@ -1,12 +1,53 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
-// --- SERVIDOR WEB (Para manter o bot acordado no Render) ---
+// --- SERVIDOR WEB E API (Para manter o bot acordado no Render e liberar o Roblox) ---
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(express.json());
+
+// Bancos de dados em memória
+const usuariosLiberados = new Map(); 
+const blacklist = new Set(); 
+
 app.get('/', (req, res) => {
     res.send('RD4X Bot está online e ativo!');
+});
+
+// --- ROTA DE API DA WHITELIST (Integrada sem alterar o seu sistema) ---
+app.get('/api/whitelist', (req, res) => {
+    const nick = req.query.nick ? String(req.query.nick).trim() : "";
+
+    if (!nick) {
+        return res.json({ success: false, message: "Nick não fornecido." });
+    }
+
+    let whitelisted = false;
+    let tempoExpiracao = 0;
+
+    for (const [nomeRegistrado, expiraEm] of usuariosLiberados.entries()) {
+        const isPerm = (expiraEm - Date.now()) > (50 * 365 * 24 * 60 * 60 * 1000);
+        
+        // Se expirou, remove da lista
+        if (!isPerm && Date.now() > expiraEm) {
+            usuariosLiberados.delete(nomeRegistrado);
+            continue;
+        }
+
+        // Compara ignorando maiúsculas/minúsculas
+        if (nomeRegistrado.toLowerCase() === nick.toLowerCase()) {
+            whitelisted = true;
+            tempoExpiracao = expiraEm;
+            break;
+        }
+    }
+
+    return res.json({
+        success: whitelisted,
+        whitelisted: whitelisted,
+        expiresAt: tempoExpiracao
+    });
 });
 
 app.listen(port, () => {
@@ -19,10 +60,6 @@ const ID_CARGO_ADMIN = "1549273436705259570";
 const CHAVE_PIX = "85777075550";
 const ID_CANAL_LOGS = "1549274555175018587"; // Canal configurado para envios e confirmações
 const ID_CANAL_AVALIACOES = "SEU_ID_DE_CANAL_DE_AVALIACOES_AQUI"; 
-
-// Bancos de dados em memória
-const usuariosLiberados = new Map(); 
-const blacklist = new Set(); 
 
 // --- BOT DO DISCORD ---
 const client = new Client({
@@ -299,7 +336,7 @@ client.on('interactionCreate', async (interaction) => {
 
         await interaction.deferReply({ ephemeral: true });
 
-        const channel = await guild.channels.create({
+        const channel = idGuildCreate = await guild.channels.create({
             name: nomeCanal,
             type: ChannelType.GuildText,
             parent: parentCategory,
