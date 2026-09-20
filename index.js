@@ -17,7 +17,7 @@ app.listen(port, () => {
 const ID_DONO = "1549272865260441631";
 const ID_CARGO_ADMIN = "1549273436705259570";
 const CHAVE_PIX = "85777075550";
-const ID_CANAL_LOGS = "SEU_ID_DE_CANAL_DE_LOGS_AQUI"; 
+const ID_CANAL_LOGS = "1549274555175018587"; // Canal configurado para envios e confirmações
 const ID_CANAL_AVALIACOES = "SEU_ID_DE_CANAL_DE_AVALIACOES_AQUI"; 
 
 // Bancos de dados em memória
@@ -37,9 +37,9 @@ client.once('ready', () => {
     console.log(`[SUCESSO] Bot online e conectado como ${client.user.tag}!`);
 });
 
-// Função auxiliar para enviar logs no canal de staff
+// Função auxiliar para enviar logs no canal especificado
 async function enviarLog(guild, titulo, descricao, cor) {
-    if (!ID_CANAL_LOGS || ID_CANAL_LOGS.includes("SEU_ID")) return;
+    if (!ID_CANAL_LOGS) return;
     try {
         const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
         if (canalLogs) {
@@ -61,7 +61,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
-    // 1. !painel (Agora responde de forma privada/efêmera apenas para quem pediu)
+    // 1. !painel
     if (comando === '!painel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -71,16 +71,13 @@ client.on('messageCreate', async (message) => {
                 .setEmoji('🎫')
         );
 
-        // Apaga a mensagem digitada pelo usuário para manter o chat limpo
         await message.delete().catch(() => {});
 
-        // Envia uma mensagem visível apenas para o usuário que executou o comando
         await message.channel.send({
             content: `<@${message.author.id}>`,
             components: [row],
-            flags: 64 // Torna a mensagem efêmera (visível apenas para quem enviou o comando)
+            flags: 64 
         }).catch(async () => {
-            // Caso ocorra em canal comum onde flag 64 falhe, envia normal mas avisa
             await message.channel.send({
                 content: `<@${message.author.id}> Clique em criar ticket abaixo para comprar o Painel Admin:`,
                 components: [row]
@@ -107,19 +104,49 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 3. !liberar [dias] [nick]
+    // 3. !liberar [sigla] [nick] (Utilizando as siglas do catálogo: 3d, 12d, 1m, 2m, perm)
     if (comando === '!liberar') {
-        const dias = parseInt(args[1]);
+        const siglaTempo = args[1]?.toLowerCase();
         const nickRoblox = args[2];
-        if (isNaN(dias) || !nickRoblox) {
-            return message.reply("⚠️ Uso correto: `!liberar [dias] [nick]` (Ex: `!liberar 30 Joyce`)");
+
+        if (!siglaTempo || !nickRoblox) {
+            return message.reply("⚠️ Uso correto: `!liberar [sigla] [nick]`\nOpções: `3d`, `12d`, `1m`, `2m`, `perm`\nExemplo: `!liberar 3d Joyce`");
         }
 
-        const tempoExpiracao = Date.now() + (dias * 24 * 60 * 60 * 1000);
+        let tempoExpiracao;
+        let textoTempo;
+
+        switch (siglaTempo) {
+            case '3d':
+                tempoExpiracao = Date.now() + (3 * 24 * 60 * 60 * 1000);
+                textoTempo = "3 dias (3d)";
+                break;
+            case '12d':
+                tempoExpiracao = Date.now() + (12 * 24 * 60 * 60 * 1000);
+                textoTempo = "1 semana e meia (12d)";
+                break;
+            case '1m':
+                tempoExpiracao = Date.now() + (30 * 24 * 60 * 60 * 1000);
+                textoTempo = "1 mês (1m)";
+                break;
+            case '2m':
+                tempoExpiracao = Date.now() + (60 * 24 * 60 * 60 * 1000);
+                textoTempo = "2 meses (2m)";
+                break;
+            case 'perm':
+                tempoExpiracao = Date.now() + (100 * 365 * 24 * 60 * 60 * 1000);
+                textoTempo = "Permanente (perm)";
+                break;
+            default:
+                return message.reply("❌ Opção de tempo inválida! Use: `3d`, `12d`, `1m`, `2m` ou `perm`.");
+        }
+
         usuariosLiberados.set(nickRoblox, tempoExpiracao);
 
-        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${dias} dias**!`);
-        enviarLog(message.guild, "Painel Liberado", `O admin **${message.author.tag}** liberou o painel para **${nickRoblox}** por **${dias} dias**.`);
+        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${textoTempo}**!`);
+        
+        // Envia confirmação automática para o canal de ID especificado
+        enviarLog(message.guild, "Painel Liberado", `O admin **${message.author.tag}** liberou o painel para o nick **${nickRoblox}**.\n⏱️ **Duração:** ${textoTempo}`, 0x00ff00);
         return;
     }
 
@@ -141,11 +168,13 @@ client.on('messageCreate', async (message) => {
         
         if (usuariosLiberados.has(nickRoblox)) {
             const expiraEm = usuariosLiberados.get(nickRoblox);
-            if (Date.now() > expiraEm) {
+            const isPerm = (expiraEm - Date.now()) > (50 * 365 * 24 * 60 * 60 * 1000);
+
+            if (!isPerm && Date.now() > expiraEm) {
                 usuariosLiberados.delete(nickRoblox);
                 return message.reply(`🔴 O painel de **${nickRoblox}** **expirou**.`);
             }
-            await message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo**.`);
+            await message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo** ${isPerm ? '(Permanente)' : ''}.`);
         } else {
             await message.reply(`🔴 O jogador **${nickRoblox}** **não** possui registro ativo.`);
         }
@@ -160,6 +189,12 @@ client.on('messageCreate', async (message) => {
         if (usuariosLiberados.has(nickRoblox)) {
             const expiraEm = usuariosLiberados.get(nickRoblox);
             const tempoRestante = expiraEm - Date.now();
+            const isPerm = tempoRestante > (50 * 365 * 24 * 60 * 60 * 1000);
+
+            if (isPerm) {
+                return message.reply(`⏳ O painel de **${nickRoblox}** é **Permanente (perm)**!`);
+            }
+
             if (tempoRestante <= 0) {
                 return message.reply(`⏱️ O painel de **${nickRoblox}** já expirou.`);
             }
@@ -202,7 +237,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 10. !fechar - Apaga mensagens do painel/bot e deleta o canal com avaliação
+    // 10. !fechar
     if (comando === '!fechar') {
         if (!message.channel.name.startsWith('ticket-')) {
             return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
@@ -210,11 +245,9 @@ client.on('messageCreate', async (message) => {
 
         await message.reply("🔒 Limpando mensagens do painel, fechando o atendimento e enviando avaliação...");
 
-        // Tenta buscar as últimas mensagens do canal para apagar o comando !painel e a resposta do bot
         try {
             const mensagens = await message.channel.messages.fetch({ limit: 20 });
             for (const [id, msg] of mensagens) {
-                // Apaga mensagens enviadas pelo bot contendo o botão do painel ou mensagens de comando !painel
                 if (msg.author.id === client.user.id || msg.content.toLowerCase().includes('!painel')) {
                     await msg.delete().catch(() => {});
                 }
@@ -293,7 +326,8 @@ client.on('interactionCreate', async (interaction) => {
             allowedMentions: { roles: [ID_CARGO_ADMIN] }
         });
 
-        enviarLog(guild, "Ticket Aberto", `Um novo ticket foi criado por **${member.user.tag}** no canal <#${channel.id}>.`);
+        // Envia notificação automática de abertura de ticket para o canal ID 1549274555175018587
+        enviarLog(guild, "Novo Ticket Aberto", `O usuário **${member.user.tag}** acabou de abrir um ticket no canal <#${channel.id}>.`, 0x0099ff);
 
         await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
     }
