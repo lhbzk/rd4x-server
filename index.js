@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const express = require('express');
 
 // --- SERVIDOR WEB & API PARA O ROBLOX ---
@@ -20,7 +20,8 @@ app.get('/api/v2/whitelist', (req, res) => {
     }
 
     if (usuariosLiberados.has(nickRoblox)) {
-        const expiraEm = usuariosLiberados.get(nickRoblox);
+        const dados = usuariosLiberados.get(nickRoblox);
+        const expiraEm = typeof dados === 'object' ? dados.expiraEm : dados;
         
         if (expiraEm === "perm") {
             return res.json({ success: true, whitelisted: true });
@@ -43,14 +44,16 @@ app.listen(port, () => {
 // --- CONFIGURAÇÕES E IDS ---
 const ID_DONO = "1549272865260441631";
 const ID_CARGO_ADMIN = "1549273436705259570";
+const ID_CARGO_CLIENTE = "1549273666951577691"; // Cole aqui o ID do Cargo VIP do seu Discord
 const CHAVE_PIX = "85777075550";
-const ID_CANAL_LOGS = "1549274555175018587"; // ID configurado do seu canal de logs
-const ID_CANAL_AVALIACOES = "SEU_ID_DE_CANAL_DE_AVALIACOES_AQUI"; 
+const ID_CANAL_LOGS = "1549274555175018587"; 
+const ID_CANAL_AVALIACOES = "1549458044331757660"; 
 
 // Bancos de dados em memória
-const usuariosLiberados = new Map(); 
+const usuariosLiberados = new Map(); // nickRoblox -> { expiraEm, discordId, avisadoExpiracao }
 const blacklist = new Set(); 
-const ticketsAtivos = new Map(); // Guarda o histórico de eventos e mensagem do log para cada ticket
+const ticketsAtivos = new Map(); // idCanal -> { logs, messageId, ultimoContato, avisoInatividade }
+const cooldownTickets = new Map(); // discordId -> timestamp
 
 // --- BOT DO DISCORD ---
 const client = new Client({
@@ -63,19 +66,84 @@ const client = new Client({
 
 client.once('ready', () => {
     console.log(`[SUCESSO] Bot online e conectado como ${client.user.tag}!`);
+
+    // --- (RECURSO 4) STATUS DINÂMICO DO BOT ---
+    let indiceStatus = 0;
+    setInterval(() => {
+        const totalClientes = usuariosLiberados.size;
+        const listaStatus = [
+            { name: 'RD4X Hub | v2.0 🚀', type: 0 }, // Playing
+            { name: `${totalClientes} Clientes VIP 💎`, type: 3 }, // Watching
+            { name: '!ajuda | Suporte 🎫', type: 2 } // Listening
+        ];
+        
+        client.user.setActivity(listaStatus[indiceStatus].name, { type: listaStatus[indiceStatus].type });
+        indiceStatus = (indiceStatus + 1) % listaStatus.length;
+    }, 15000);
+
+    // --- (RECURSO 1) AVISO AUTOMÁTICO DE EXPIRAÇÃO DE WHITELIST (DM) ---
+    setInterval(async () => {
+        const agora = Date.now();
+        const doisDiasEmMs = 2 * 24 * 60 * 60 * 1000;
+
+        for (const [nick, dados] of usuariosLiberados.entries()) {
+            if (dados.expiraEm && dados.expiraEm !== "perm") {
+                const tempoRestante = dados.expiraEm - agora;
+
+                if (tempoRestante > 0 && tempoRestante <= doisDiasEmMs && !dados.avisadoExpiracao) {
+                    dados.avisadoExpiracao = true;
+                    if (dados.discordId) {
+                        try {
+                            const user = await client.users.fetch(dados.discordId);
+                            if (user) {
+                                await user.send(`⚠️ **Aviso de Expiração — RD4X Hub**\n\nOlá! Seu painel no Roblox para a conta **${nick}** irá expirar em menos de 48 horas.\nAbra um ticket no servidor para renovar seu acesso!`);
+                            }
+                        } catch (e) {}
+                    }
+                }
+
+                if (tempoRestante <= 0) {
+                    if (dados.discordId && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
+                        for (const guild of client.guilds.cache.values()) {
+                            try {
+                                const member = await guild.members.fetch(dados.discordId);
+                                if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
+                            } catch (e) {}
+                        }
+                    }
+                    usuariosLiberados.delete(nick);
+                }
+            }
+        }
+    }, 60000);
+
+    // --- (RECURSO 7) AUTO-CLOSE POR INATIVIDADE (24h) ---
+    setInterval(async () => {
+        const agora = Date.now();
+        const vinteEQuatroHoras = 24 * 60 * 60 * 1000;
+
+        for (const [idCanal, dados] of ticketsAtivos.entries()) {
+            if (dados.ultimoContato && (agora - dados.ultimoContato >= vinteEQuatroHoras) && !dados.avisoInatividade) {
+                dados.avisoInatividade = true;
+                const canal = client.channels.cache.get(idCanal);
+                if (canal) {
+                    await canal.send("⏱️ **Aviso de Inatividade:** Este ticket está sem respostas há 24 horas e poderá ser encerrado em breve.");
+                }
+            }
+        }
+    }, 300000);
 });
 
-// --- FUNÇÃO DE LOGS COMPACTOS (MESCLA MENSAGENS EM UMA SÓ) ---
+// --- FUNÇÃO DE LOGS COMPACTOS ---
 async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEvento, cor) {
     if (!ID_CANAL_LOGS || ID_CANAL_LOGS.includes("SEU_ID")) return;
     try {
         const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
         if (!canalLogs) return;
 
-        let dadosTicket = ticketsAtivos.get(idTicket) || { logs: [], messageId: null };
+        let dadosTicket = ticketsAtivos.get(idTicket) || { logs: [], messageId: null, ultimoContato: Date.now() };
         const dataFormatada = `<t:${Math.floor(Date.now() / 1000)}:R>`;
         
-        // Adiciona a nova mensagem ao histórico
         dadosTicket.logs.push(`• [${dataFormatada}] ${novoEvento}`);
 
         const embed = new EmbedBuilder()
@@ -85,7 +153,6 @@ async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEve
             .setFooter({ text: "RD4X Hub • Sistema Unificado de Logs" })
             .setTimestamp();
 
-        // Se já existe uma mensagem enviada para esse ticket, edita ela em vez de mandar uma nova
         if (dadosTicket.messageId) {
             try {
                 const msgExistente = await canalLogs.messages.fetch(dadosTicket.messageId);
@@ -94,12 +161,9 @@ async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEve
                     ticketsAtivos.set(idTicket, dadosTicket);
                     return;
                 }
-            } catch (e) {
-                // Se a mensagem sumiu, envia uma nova abaixo
-            }
+            } catch (e) {}
         }
 
-        // Caso contrário, cria a primeira mensagem de log
         const novaMsg = await canalLogs.send({ embeds: [embed] });
         dadosTicket.messageId = novaMsg.id;
         ticketsAtivos.set(idTicket, dadosTicket);
@@ -112,11 +176,14 @@ async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEve
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // Resposta automática de confirmação de envio de comprovante/imagem dentro de um ticket
     if (message.channel.name?.startsWith('ticket-')) {
+        let dados = ticketsAtivos.get(message.channel.id) || { logs: [], messageId: null };
+        dados.ultimoContato = Date.now();
+        dados.avisoInatividade = false;
+        ticketsAtivos.set(message.channel.id, dados);
+
         if (message.attachments.size > 0) {
             await message.reply("Aguarde um momento, você já será respondido! ⌛");
-            
             await registrarLogTicket(
                 message.guild, 
                 message.channel.id, 
@@ -131,23 +198,20 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
-    // 1. !admin_help / !adminhelp
+    // 1. !admin_help
     if (comando === '!admin_help' || comando === '!adminhelp') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        
-        if (!eAdmin) {
-            return message.reply("❌ Apenas administradores do **RD4X Hub** podem usar este comando!");
-        }
+        if (!eAdmin) return message.reply("❌ Apenas administradores do **RD4X Hub** podem usar este comando!");
 
         const embedAdmin = new EmbedBuilder()
             .setTitle("🛡️ Painel Administrativo — Comandos de Staff")
             .setDescription("Abaixo estão listados os comandos restritos para gerenciamento:")
             .addFields(
-                { name: "🔑 `!liberar [tempo] [nick]`", value: "Libera o painel no Roblox (`perm`, `30d`, `1m`)." },
-                { name: "🔒 `!retirarpainel [nick]`", value: "Revoga imediatamente o acesso do usuário no jogo." },
+                { name: "🔑 `!liberar [tempo] [nick] [@membro]`", value: "Libera a whitelist e concede o cargo VIP no Discord." },
+                { name: "🔒 `!retirarpainel [nick]`", value: "Revoga o acesso no Roblox e remove o cargo VIP." },
                 { name: "🚫 `!blacklist [nick/id]`", value: "Bloqueia a pessoa de abrir novos tickets." },
                 { name: "✅ `!unblacklist [nick/id]`", value: "Remove o bloqueio de abertura de tickets." },
-                { name: "❌ `!fechar`", value: "Encerra o ticket atual, limpa o painel e gera histórico unificado." }
+                { name: "❌ `!fechar`", value: "Encerra o ticket, envia o arquivo transcript .txt nos logs e limpa mensagens." }
             )
             .setColor(0x0088ff)
             .setFooter({ text: "RD4X Hub • Acesso Restrito" })
@@ -168,16 +232,9 @@ client.on('messageCreate', async (message) => {
         );
 
         await message.delete().catch(() => {});
-
         await message.channel.send({
-            content: `<@${message.author.id}>`,
-            components: [row],
-            flags: 64
-        }).catch(async () => {
-            await message.channel.send({
-                content: `<@${message.author.id}> Clique em criar ticket abaixo para comprar o Painel Admin:`,
-                components: [row]
-            });
+            content: `<@${message.author.id}> Clique em criar ticket abaixo para adquirir seu Painel Admin:`,
+            components: [row]
         });
         return;
     }
@@ -200,16 +257,17 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 4. !liberar [tempo] [nick]
+    // 4. !liberar [tempo] [nick] [@membro] (RECURSO 5: Auto-Role)
     if (comando === '!liberar') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
 
         const tempoInput = args[1]?.toLowerCase();
         const nickRoblox = args[2];
+        const mencaoDiscord = message.mentions.members.first();
 
         if (!tempoInput || !nickRoblox) {
-            return message.reply("⚠️ Uso correto: `!liberar [tempo] [nick]`\nExemplos: `perm`, `30d`, `7d`, `1m`");
+            return message.reply("⚠️ Uso correto: `!liberar [tempo] [nick] [@membro_opcional]`\nExemplos: `30d`, `perm`, `1m`");
         }
 
         let tempoExpiracao;
@@ -220,9 +278,7 @@ client.on('messageCreate', async (message) => {
             textoTempoExibicao = "permanente (vitalício)";
         } else {
             const match = tempoInput.match(/^(\d+)([a-z]*)$/);
-            if (!match) {
-                return message.reply("⚠️ Formato de tempo inválido! Use `30d`, `perm` ou `1m`.");
-            }
+            if (!match) return message.reply("⚠️ Formato de tempo inválido! Use `30d`, `perm` ou `1m`.");
 
             const quantidade = parseInt(match[1]);
             const unidade = match[2] || 'd';
@@ -235,9 +291,17 @@ client.on('messageCreate', async (message) => {
             textoTempoExibicao = `${quantidade} ${unidade === 'm' ? 'mês/meses' : 'dia(s)'}`;
         }
 
-        usuariosLiberados.set(nickRoblox, tempoExpiracao);
+        usuariosLiberados.set(nickRoblox, {
+            expiraEm: tempoExpiracao,
+            discordId: mencaoDiscord ? mencaoDiscord.id : null,
+            avisadoExpiracao: false
+        });
 
-        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${textoTempoExibicao}**!`);
+        if (mencaoDiscord && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
+            await mencaoDiscord.roles.add(ID_CARGO_CLIENTE).catch(() => {});
+        }
+
+        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${textoTempoExibicao}**!${mencaoDiscord ? ` Cargo VIP concedido a <@${mencaoDiscord.id}>.` : ''}`);
         
         if (message.channel.name?.startsWith('ticket-')) {
             await registrarLogTicket(
@@ -260,26 +324,23 @@ client.on('messageCreate', async (message) => {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!retirarpainel [nick]`");
         
+        const dados = usuariosLiberados.get(nickRoblox);
+        if (dados && dados.discordId && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
+            const member = await message.guild.members.fetch(dados.discordId).catch(() => {});
+            if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
+        }
+
         usuariosLiberados.delete(nickRoblox);
         await message.reply(`🔒 O painel de **${nickRoblox}** foi revogado.`);
         return;
     }
 
-    // 6. !status [nick]
+    // 6. !status / !tempo / !suporte
     if (comando === '!status') {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!status [nick]`");
         
         if (usuariosLiberados.has(nickRoblox) || nickRoblox === ID_DONO) {
-            if (nickRoblox === ID_DONO) {
-                return message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo (Dono)**.`);
-            }
-
-            const expiraEm = usuariosLiberados.get(nickRoblox);
-            if (expiraEm !== "perm" && Date.now() > expiraEm) {
-                usuariosLiberados.delete(nickRoblox);
-                return message.reply(`🔴 O painel de **${nickRoblox}** **expirou**.`);
-            }
             await message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo**.`);
         } else {
             await message.reply(`🔴 O jogador **${nickRoblox}** **não** possui registro ativo.`);
@@ -287,26 +348,19 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 7. !tempo [nick]
     if (comando === '!tempo') {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!tempo [nick]`");
 
-        if (nickRoblox === ID_DONO) {
-            return message.reply(`♾️ O painel do Dono (**${nickRoblox}**) é permanente.`);
-        }
-
         if (usuariosLiberados.has(nickRoblox)) {
-            const expiraEm = usuariosLiberados.get(nickRoblox);
+            const dados = usuariosLiberados.get(nickRoblox);
+            const expiraEm = typeof dados === 'object' ? dados.expiraEm : dados;
             
-            if (expiraEm === "perm") {
-                return message.reply(`♾️ O painel de **${nickRoblox}** é **Permanente**.`);
-            }
+            if (expiraEm === "perm") return message.reply(`♾️ O painel de **${nickRoblox}** é **Permanente**.`);
 
             const tempoRestante = expiraEm - Date.now();
-            if (tempoRestante <= 0) {
-                return message.reply(`⏱️ O painel de **${nickRoblox}** já expirou.`);
-            }
+            if (tempoRestante <= 0) return message.reply(`⏱️ O painel de **${nickRoblox}** já expirou.`);
+            
             const diasRestantes = Math.ceil(tempoRestante / (1000 * 60 * 60 * 24));
             await message.reply(`⏳ Restam aproximadamente **${diasRestantes} dia(s)** para o painel de **${nickRoblox}** expirar.`);
         } else {
@@ -315,47 +369,30 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 8. !blacklist / !unblacklist
-    if (comando === '!blacklist') {
-        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        if (!eAdmin) return message.reply("❌ Sem permissão!");
-
-        const alvo = args[1];
-        if (!alvo) return message.reply("⚠️ Uso correto: `!blacklist [nick ou id]`");
-        blacklist.add(alvo);
-        await message.reply(`🚫 **${alvo}** foi adicionado à **Blacklist**.`);
-        return;
-    }
-
-    if (comando === '!unblacklist') {
-        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        if (!eAdmin) return message.reply("❌ Sem permissão!");
-
-        const alvo = args[1];
-        if (!alvo) return message.reply("⚠️ Uso correto: `!unblacklist [nick ou id]`");
-        if (blacklist.has(alvo)) {
-            blacklist.delete(alvo);
-            await message.reply(`✅ **${alvo}** foi removido da Blacklist.`);
-        } else {
-            await message.reply(`❌ **${alvo}** não está na blacklist.`);
-        }
-        return;
-    }
-
-    // 9. !suporte
     if (comando === '!suporte') {
         let msgSuporte = `🆘 **Ajuda solicitada!**\n\nAguarde os administradores. <@&${ID_CARGO_ADMIN}>`;
         await message.reply({ content: msgSuporte, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
         return;
     }
 
-    // 10. !fechar (Limpa mensagens antigas do bot, registra o log final e deleta o canal)
+    // 7. !fechar (RECURSO 2: Transcript em .TXT e Limpeza do Painel)
     if (comando === '!fechar') {
         if (!message.channel.name.startsWith('ticket-')) {
             return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
         }
 
-        await message.reply("🔒 Limpando mensagens do painel, encerrando o atendimento e atualizando os logs...");
+        await message.reply("🔒 Baixando histórico de conversas, enviando transcript e fechando o ticket...");
+
+        let arquivoTranscript = null;
+        try {
+            const colecaoMensagens = await message.channel.messages.fetch({ limit: 100 });
+            const conversas = colecaoMensagens.reverse().map(m => `[${m.createdAt.toLocaleString('pt-BR')}] ${m.author.tag}: ${m.content}`).join('\n');
+            
+            const bufferTranscript = Buffer.from(conversas, 'utf-8');
+            arquivoTranscript = new AttachmentBuilder(bufferTranscript, { name: `transcript-${message.channel.name}.txt` });
+        } catch (e) {
+            console.error("Erro ao gerar transcript:", e);
+        }
 
         try {
             const mensagens = await message.channel.messages.fetch({ limit: 20 });
@@ -364,8 +401,16 @@ client.on('messageCreate', async (message) => {
                     await msg.delete().catch(() => {});
                 }
             }
-        } catch (e) {
-            console.error("Erro ao apagar mensagens antigas:", e);
+        } catch (e) {}
+
+        if (ID_CANAL_LOGS && arquivoTranscript) {
+            const canalLogs = message.guild.channels.cache.get(ID_CANAL_LOGS);
+            if (canalLogs) {
+                await canalLogs.send({ 
+                    content: `📑 **Transcript em Anexo:** Conversa completa do canal \`${message.channel.name}\` fechado por **${message.author.tag}**.`,
+                    files: [arquivoTranscript]
+                }).catch(() => {});
+            }
         }
 
         await registrarLogTicket(
@@ -373,21 +418,9 @@ client.on('messageCreate', async (message) => {
             message.channel.id, 
             message.channel.name, 
             `<@${message.author.id}>`, 
-            `🔒 Ticket encerrado por ${message.author.tag}.`, 
+            `🔒 Ticket encerrado e arquivo de histórico (Transcript) salvo.`, 
             0xff0044
         );
-
-        if (ID_CANAL_AVALIACOES && !ID_CANAL_AVALIACOES.includes("SEU_ID")) {
-            const canalAvaliacoes = message.guild.channels.cache.get(ID_CANAL_AVALIACOES);
-            if (canalAvaliacoes) {
-                const embedAvaliacao = new EmbedBuilder()
-                    .setTitle("⭐ Nova Avaliação de Atendimento")
-                    .setDescription(`Atendimento encerrado para o ticket **${message.channel.name}**.\nObrigado por comprar com o RD4X!`)
-                    .setColor(0x00ffcc)
-                    .setTimestamp();
-                await canalAvaliacoes.send({ embeds: [embedAvaliacao] }).catch(() => {});
-            }
-        }
 
         setTimeout(async () => {
             ticketsAtivos.delete(message.channel.id);
@@ -397,13 +430,19 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// --- INTERAÇÃO DE CRIAR TICKET ---
+// --- INTERAÇÃO DE CRIAR TICKET (RECURSO 3: Antispam) ---
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
     if (interaction.customId === 'criar_ticket') {
         const guild = interaction.guild;
         const member = interaction.member;
+
+        const tempoUltimoTicket = cooldownTickets.get(member.id);
+        if (tempoUltimoTicket && (Date.now() - tempoUltimoTicket < 300000)) {
+            const tempoRestante = Math.ceil((300000 - (Date.now() - tempoUltimoTicket)) / 1000);
+            return interaction.reply({ content: `⏳ Por favor, aguarde **${tempoRestante} segundos** antes de abrir outro ticket.`, ephemeral: true });
+        }
 
         if (blacklist.has(member.user.username) || blacklist.has(member.id)) {
             return interaction.reply({ content: `❌ Você está bloqueado de abrir tickets.`, ephemeral: true });
@@ -418,6 +457,7 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         await interaction.deferReply({ ephemeral: true });
+        cooldownTickets.set(member.id, Date.now());
 
         const channel = await guild.channels.create({
             name: nomeCanal,
@@ -435,25 +475,10 @@ client.on('interactionCreate', async (interaction) => {
             `\`${CHAVE_PIX}\`\n\n` +
             `Após isso, mande o comprovante, Seu Nick no Roblox e a confirmação da quantidade de dias.`;
 
-        await channel.send({ 
-            content: `<@${member.user.id}>\n\n` + textoTicket,
-            allowedMentions: { users: [member.user.id] }
-        });
+        await channel.send({ content: `<@${member.user.id}>\n\n` + textoTicket, allowedMentions: { users: [member.user.id] } });
+        await channel.send({ content: `Aguarde os responsáveis analisarem o comprovante. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
 
-        let avisoResponsaveis = `Aguarde os responsáveis analisarem o comprovante. <@&${ID_CARGO_ADMIN}>`;
-        await channel.send({
-            content: avisoResponsaveis,
-            allowedMentions: { roles: [ID_CARGO_ADMIN] }
-        });
-
-        await registrarLogTicket(
-            guild, 
-            channel.id, 
-            nomeCanal, 
-            `<@${member.user.id}>`, 
-            `🟢 Ticket criado pelo cliente.`, 
-            0x00ffcc
-        );
+        await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.user.id}>`, `🟢 Ticket criado pelo cliente.`, 0x00ffcc);
 
         await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
     }
