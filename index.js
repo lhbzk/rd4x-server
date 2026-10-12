@@ -5,36 +5,75 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(express.json());
+
 app.get('/', (req, res) => {
     res.send('RD4X Bot está online e ativo!');
 });
 
+// --- (RECURSO 5) ROTA DE WHITELIST COM LOCK DE HWID / DISPOSITIVO ---
 app.get('/api/v2/whitelist', (req, res) => {
     const nickRoblox = req.query.nick || req.query.userid;
+    const hwidCliente = req.query.hwid || req.headers['x-hwid'] || "HWID_NAO_ENVIADO";
+
     if (!nickRoblox) {
-        return res.json({ success: false, whitelisted: false });
+        return res.json({ success: false, whitelisted: false, message: "Nick ausente" });
     }
 
     if (nickRoblox === ID_DONO) {
-        return res.json({ success: true, whitelisted: true });
+        return res.json({ success: true, whitelisted: true, role: "Dono" });
     }
 
     if (usuariosLiberados.has(nickRoblox)) {
         const dados = usuariosLiberados.get(nickRoblox);
         const expiraEm = typeof dados === 'object' ? dados.expiraEm : dados;
         
-        if (expiraEm === "perm") {
-            return res.json({ success: true, whitelisted: true });
-        }
-
-        if (Date.now() > expiraEm) {
+        if (expiraEm !== "perm" && Date.now() > expiraEm) {
             usuariosLiberados.delete(nickRoblox);
             return res.json({ success: false, whitelisted: false, message: "Expirado" });
         }
+
+        // Checagem e Lock de HWID (Trava de Dispositivo)
+        if (dados.hwid && dados.hwid !== "LIVRE") {
+            if (dados.hwid !== hwidCliente) {
+                // Notifica tentativa de uso compartilhado no canal de logs
+                notificarSuspeitaHWID(nickRoblox, hwidCliente, dados.hwid);
+                return res.json({ success: false, whitelisted: false, message: "HWID incompativel. Uso em outro aparelho detectado!" });
+            }
+        } else {
+            // Vincula o primeiro HWID detectado ao nick do cliente
+            dados.hwid = hwidCliente;
+            usuariosLiberados.set(nickRoblox, dados);
+        }
+
         return res.json({ success: true, whitelisted: true });
     }
 
     return res.json({ success: false, whitelisted: false });
+});
+
+// --- (RECURSO 1) ROTA DE LOGS DE EXECUÇÃO DO HUB NO ROBLOX ---
+app.post('/api/v2/execucoes', async (req, res) => {
+    const { nick, jogo, hwid } = req.body;
+    totalExecucoesGlobais++;
+
+    if (ID_CANAL_LOGS && client.isReady()) {
+        try {
+            const canal = client.channels.cache.get(ID_CANAL_LOGS);
+            if (canal) {
+                const embedExec = new EmbedBuilder()
+                    .setTitle("🎮 RD4X Hub — Executado no Roblox")
+                    .setDescription(`**Jogador:** \`${nick || 'Desconhecido'}\`\n**Jogo:** \`${jogo || 'Blox Fruits / Geral'}\`\n**Status:** ✅ Acesso Validado`)
+                    .setColor(0x00ff88)
+                    .setTimestamp();
+                await canal.send({ embeds: [embedExec] });
+            }
+        } catch (e) {
+            console.error("Erro ao mandar log de execução:", e);
+        }
+    }
+
+    return res.json({ success: true, logged: true });
 });
 
 app.listen(port, () => {
@@ -44,16 +83,22 @@ app.listen(port, () => {
 // --- CONFIGURAÇÕES E IDS ---
 const ID_DONO = "1549272865260441631";
 const ID_CARGO_ADMIN = "1549273436705259570";
-const ID_CARGO_CLIENTE = "1549273666951577691"; // Cole aqui o ID do Cargo VIP do seu Discord
+const ID_CARGO_CLIENTE = "1549273666951577691"; // ID do Cargo VIP do seu Discord
 const CHAVE_PIX = "85777075550";
 const ID_CANAL_LOGS = "1549274555175018587"; 
-const ID_CANAL_AVALIACOES = "1549458044331757660"; 
+const ID_CANAL_AVALIACOES = "1549458044331757660";
 
-// Bancos de dados em memória
-const usuariosLiberados = new Map(); // nickRoblox -> { expiraEm, discordId, avisadoExpiracao }
+**Histórico de Atividades:**
+• [<t:1791763142:R>] 🟢 Ticket criado pelo cliente.
+• [<t:1791763782:R>] 🔒 Ticket encerrado por scr1pt3r_09_23619."; 
+
+// Estatísticas e Bancos em Memória
+let totalExecucoesGlobais = 0;
+let historicoVendas = []; // Guarda registros de vendas para o painel !financeiro
+const usuariosLiberados = new Map(); // nickRoblox -> { expiraEm, discordId, avisadoExpiracao, hwid, valorPago, dataVenda }
 const blacklist = new Set(); 
-const ticketsAtivos = new Map(); // idCanal -> { logs, messageId, ultimoContato, avisoInatividade }
-const cooldownTickets = new Map(); // discordId -> timestamp
+const ticketsAtivos = new Map(); 
+const cooldownTickets = new Map(); 
 
 // --- BOT DO DISCORD ---
 const client = new Client({
@@ -64,24 +109,41 @@ const client = new Client({
     ]
 });
 
+// Função para avisar sobre suspeita de compartilhamento de conta
+async function notificarSuspeitaHWID(nick, hwidTentativa, hwidRegistrado) {
+    if (!ID_CANAL_LOGS) return;
+    try {
+        const canal = client.channels.cache.get(ID_CANAL_LOGS);
+        if (canal) {
+            const embedHWID = new EmbedBuilder()
+                .setTitle("🚨 Alerta de Segurança — HWID Incompatível")
+                .setDescription(`Tentativa de uso em outro aparelho detectada!\n\n**Nick:** \`${nick}\`\n**HWID Registrado:** \`${hwidRegistrado}\`\n**HWID Tentativa:** \`${hwidTentativa}\``)
+                .setColor(0xff0000)
+                .setTimestamp();
+            await canal.send({ embeds: [embedHWID] });
+        }
+    } catch (e) {}
+}
+
 client.once('ready', () => {
     console.log(`[SUCESSO] Bot online e conectado como ${client.user.tag}!`);
 
-    // --- (RECURSO 4) STATUS DINÂMICO DO BOT ---
+    // Status Dinâmico no Discord
     let indiceStatus = 0;
     setInterval(() => {
         const totalClientes = usuariosLiberados.size;
         const listaStatus = [
-            { name: 'RD4X Hub | v2.0 🚀', type: 0 }, // Playing
-            { name: `${totalClientes} Clientes VIP 💎`, type: 3 }, // Watching
-            { name: '!ajuda | Suporte 🎫', type: 2 } // Listening
+            { name: 'RD4X Hub | v2.0 🚀', type: 0 },
+            { name: `${totalClientes} Clientes VIP 💎`, type: 3 },
+            { name: `${totalExecucoesGlobais} Injeções no Roblox 🎮`, type: 0 },
+            { name: '!ajuda | Suporte 🎫', type: 2 }
         ];
         
         client.user.setActivity(listaStatus[indiceStatus].name, { type: listaStatus[indiceStatus].type });
         indiceStatus = (indiceStatus + 1) % listaStatus.length;
     }, 15000);
 
-    // --- (RECURSO 1) AVISO AUTOMÁTICO DE EXPIRAÇÃO DE WHITELIST (DM) ---
+    // Aviso automático de expiração em 48h
     setInterval(async () => {
         const agora = Date.now();
         const doisDiasEmMs = 2 * 24 * 60 * 60 * 1000;
@@ -117,7 +179,7 @@ client.once('ready', () => {
         }
     }, 60000);
 
-    // --- (RECURSO 7) AUTO-CLOSE POR INATIVIDADE (24h) ---
+    // Auto-Close por Inatividade (24h)
     setInterval(async () => {
         const agora = Date.now();
         const vinteEQuatroHoras = 24 * 60 * 60 * 1000;
@@ -134,7 +196,7 @@ client.once('ready', () => {
     }, 300000);
 });
 
-// --- FUNÇÃO DE LOGS COMPACTOS ---
+// Logs Compactos
 async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEvento, cor) {
     if (!ID_CANAL_LOGS || ID_CANAL_LOGS.includes("SEU_ID")) return;
     try {
@@ -144,7 +206,7 @@ async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEve
         let dadosTicket = ticketsAtivos.get(idTicket) || { logs: [], messageId: null, ultimoContato: Date.now() };
         const dataFormatada = `<t:${Math.floor(Date.now() / 1000)}:R>`;
         
-        dadosTicket.logs.push(`• [${dataFormatada}] ${novoEvento}`);
+        dadosTicket.logs.push(`• [${dataFormatada}]${novoEvento}`);
 
         const embed = new EmbedBuilder()
             .setTitle(`🎫 Painel de Atendimento — ${tituloGeral}`)
@@ -207,11 +269,13 @@ client.on('messageCreate', async (message) => {
             .setTitle("🛡️ Painel Administrativo — Comandos de Staff")
             .setDescription("Abaixo estão listados os comandos restritos para gerenciamento:")
             .addFields(
-                { name: "🔑 `!liberar [tempo] [nick] [@membro]`", value: "Libera a whitelist e concede o cargo VIP no Discord." },
+                { name: "🔑 `!liberar [tempo] [nick] [@membro] [valor_opcional]`", value: "Libera whitelist, vincula VIP e registra faturamento." },
+                { name: "🔄 `!resetarhwid [nick]`", value: "Reseta o HWID/Aparelho vinculado ao nick do cliente." },
+                { name: "📈 `!financeiro`", value: "Exibe o painel de faturamento e vendas (Exclusivo Dono)." },
                 { name: "🔒 `!retirarpainel [nick]`", value: "Revoga o acesso no Roblox e remove o cargo VIP." },
                 { name: "🚫 `!blacklist [nick/id]`", value: "Bloqueia a pessoa de abrir novos tickets." },
                 { name: "✅ `!unblacklist [nick/id]`", value: "Remove o bloqueio de abertura de tickets." },
-                { name: "❌ `!fechar`", value: "Encerra o ticket, envia o arquivo transcript .txt nos logs e limpa mensagens." }
+                { name: "❌ `!fechar`", value: "Encerra o ticket, envia transcript e limpa mensagens." }
             )
             .setColor(0x0088ff)
             .setFooter({ text: "RD4X Hub • Acesso Restrito" })
@@ -221,7 +285,52 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 2. !painel
+    // 2. !financeiro / !vendas (RECURSO 4: Estatísticas financeiras exclusivas do Dono)
+    if (comando === '!financeiro' || comando === '!vendas') {
+        if (message.author.id !== ID_DONO) {
+            return message.reply("❌ Este comando é exclusivo do **Dono** do RD4X Hub!");
+        }
+
+        let faturamentoTotal = historicoVendas.reduce((acc, v) => acc + (v.valor || 0), 0);
+
+        const embedFinanceiro = new EmbedBuilder()
+            .setTitle("📈 Painel Financeiro & Estatísticas — RD4X Hub")
+            .setColor(0x00ff88)
+            .addFields(
+                { name: "💎 Clientes VIP Ativos", value: `\`${usuariosLiberados.size}\` clientes`, inline: true },
+                { name: "🎮 Injeções no Roblox", value: `\`${totalExecucoesGlobais}\` execuções`, inline: true },
+                { name: "💰 Faturamento Registrado", value: `\`R$ ${faturamentoTotal.toFixed(2)}\``, inline: true },
+                { name: "📦 Total de Vendas", value: `\`${historicoVendas.length}\` vendas realizadas`, inline: true }
+            )
+            .setFooter({ text: "RD4X Hub • Dados Confidenciais" })
+            .setTimestamp();
+
+        await message.reply({ embeds: [embedFinanceiro] });
+        return;
+    }
+
+    // 3. !resetarhwid [nick] (RECURSO 5: Permite resetar o aparelho se o cliente realmente trocar)
+    if (comando === '!resetarhwid') {
+        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
+        if (!eAdmin) return message.reply("❌ Sem permissão!");
+
+        const nickRoblox = args[1];
+        if (!nickRoblox) return message.reply("⚠️ Uso correto: `!resetarhwid [nick]`");
+
+        if (usuariosLiberados.has(nickRoblox)) {
+            const dados = usuariosLiberados.get(nickRoblox);
+            dados.hwid = "LIVRE";
+            usuariosLiberados.set(nickRoblox, dados);
+
+            await message.reply(`🔄 O HWID do jogador **${nickRoblox}** foi resetado! O novo aparelho que entrar primeiro será vinculado.`);
+            await registrarLogTicket(message.guild, message.channel.id, message.channel.name, `<@${message.author.id}>`, `🔄 HWID resetado para **${nickRoblox}**.`, 0x00aaff);
+        } else {
+            await message.reply(`❌ O jogador **${nickRoblox}** não possui cadastro ativo.`);
+        }
+        return;
+    }
+
+    // 4. !painel
     if (comando === '!painel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -239,7 +348,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 3. !ajuda / !help
+    // 5. !ajuda / !help
     if (comando === '!ajuda' || comando === '!help') {
         const embedAjuda = new EmbedBuilder()
             .setTitle("🤖 Central de Ajuda — RD4X Hub")
@@ -257,7 +366,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 4. !liberar [tempo] [nick] [@membro] (RECURSO 5: Auto-Role)
+    // 6. !liberar [tempo] [nick] [@membro] [valor_opcional]
     if (comando === '!liberar') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
@@ -265,9 +374,10 @@ client.on('messageCreate', async (message) => {
         const tempoInput = args[1]?.toLowerCase();
         const nickRoblox = args[2];
         const mencaoDiscord = message.mentions.members.first();
+        const valorComprado = parseFloat(args[4] || args[3]) || 0;
 
         if (!tempoInput || !nickRoblox) {
-            return message.reply("⚠️ Uso correto: `!liberar [tempo] [nick] [@membro_opcional]`\nExemplos: `30d`, `perm`, `1m`");
+            return message.reply("⚠️ Uso correto: `!liberar [tempo] [nick] [@membro_opcional] [valor_opcional]`\nExemplo: `!liberar 30d Jogador123 @Cliente 15`");
         }
 
         let tempoExpiracao;
@@ -294,8 +404,15 @@ client.on('messageCreate', async (message) => {
         usuariosLiberados.set(nickRoblox, {
             expiraEm: tempoExpiracao,
             discordId: mencaoDiscord ? mencaoDiscord.id : null,
-            avisadoExpiracao: false
+            avisadoExpiracao: false,
+            hwid: "LIVRE", // Começa livre e trava no primeiro celular/dispositivo que usar
+            valorPago: valorComprado,
+            dataVenda: new Date()
         });
+
+        if (valorComprado > 0) {
+            historicoVendas.push({ nick: nickRoblox, valor: valorComprado, data: new Date() });
+        }
 
         if (mencaoDiscord && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
             await mencaoDiscord.roles.add(ID_CARGO_CLIENTE).catch(() => {});
@@ -316,7 +433,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 5. !retirarpainel [nick]
+    // 7. !retirarpainel [nick]
     if (comando === '!retirarpainel') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
@@ -335,7 +452,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 6. !status / !tempo / !suporte
+    // 8. !status / !tempo / !suporte
     if (comando === '!status') {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!status [nick]`");
@@ -375,7 +492,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 7. !fechar (RECURSO 2: Transcript em .TXT e Limpeza do Painel)
+    // 9. !fechar
     if (comando === '!fechar') {
         if (!message.channel.name.startsWith('ticket-')) {
             return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
@@ -430,7 +547,7 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// --- INTERAÇÃO DE CRIAR TICKET (RECURSO 3: Antispam) ---
+// --- INTERAÇÃO DE CRIAR TICKET ---
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
