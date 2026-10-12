@@ -11,7 +11,7 @@ app.get('/', (req, res) => {
     res.send('RD4X Bot está online e ativo!');
 });
 
-// --- (RECURSO 5) ROTA DE WHITELIST COM LOCK DE HWID / DISPOSITIVO ---
+// --- ROTA DE WHITELIST COM LOCK DE HWID / DISPOSITIVO ---
 app.get('/api/v2/whitelist', (req, res) => {
     const nickRoblox = req.query.nick || req.query.userid;
     const hwidCliente = req.query.hwid || req.headers['x-hwid'] || "HWID_NAO_ENVIADO";
@@ -33,15 +33,12 @@ app.get('/api/v2/whitelist', (req, res) => {
             return res.json({ success: false, whitelisted: false, message: "Expirado" });
         }
 
-        // Checagem e Lock de HWID (Trava de Dispositivo)
         if (dados.hwid && dados.hwid !== "LIVRE") {
             if (dados.hwid !== hwidCliente) {
-                // Notifica tentativa de uso compartilhado no canal de logs
                 notificarSuspeitaHWID(nickRoblox, hwidCliente, dados.hwid);
                 return res.json({ success: false, whitelisted: false, message: "HWID incompativel. Uso em outro aparelho detectado!" });
             }
         } else {
-            // Vincula o primeiro HWID detectado ao nick do cliente
             dados.hwid = hwidCliente;
             usuariosLiberados.set(nickRoblox, dados);
         }
@@ -52,9 +49,9 @@ app.get('/api/v2/whitelist', (req, res) => {
     return res.json({ success: false, whitelisted: false });
 });
 
-// --- (RECURSO 1) ROTA DE LOGS DE EXECUÇÃO DO HUB NO ROBLOX ---
+// --- ROTA DE LOGS DE EXECUÇÃO DO HUB NO ROBLOX ---
 app.post('/api/v2/execucoes', async (req, res) => {
-    const { nick, jogo, hwid } = req.body;
+    const { nick, jogo } = req.body;
     totalExecucoesGlobais++;
 
     if (ID_CANAL_LOGS && client.isReady()) {
@@ -83,19 +80,15 @@ app.listen(port, () => {
 // --- CONFIGURAÇÕES E IDS ---
 const ID_DONO = "1549272865260441631";
 const ID_CARGO_ADMIN = "1549273436705259570";
-const ID_CARGO_CLIENTE = "1549273666951577691"; // ID do Cargo VIP do seu Discord
+const ID_CARGO_CLIENTE = "1549273666951577691"; // Substitua pelo ID real do seu cargo VIP
 const CHAVE_PIX = "85777075550";
 const ID_CANAL_LOGS = "1549274555175018587"; 
-const ID_CANAL_AVALIACOES = "1549458044331757660";
-
-**Histórico de Atividades:**
-• [<t:1791763142:R>] 🟢 Ticket criado pelo cliente.
-• [<t:1791763782:R>] 🔒 Ticket encerrado por scr1pt3r_09_23619."; 
+const ID_CANAL_AVALIACOES = "1549458044331757660"; 
 
 // Estatísticas e Bancos em Memória
 let totalExecucoesGlobais = 0;
-let historicoVendas = []; // Guarda registros de vendas para o painel !financeiro
-const usuariosLiberados = new Map(); // nickRoblox -> { expiraEm, discordId, avisadoExpiracao, hwid, valorPago, dataVenda }
+let historicoVendas = []; 
+const usuariosLiberados = new Map(); 
 const blacklist = new Set(); 
 const ticketsAtivos = new Map(); 
 const cooldownTickets = new Map(); 
@@ -109,7 +102,6 @@ const client = new Client({
     ]
 });
 
-// Função para avisar sobre suspeita de compartilhamento de conta
 async function notificarSuspeitaHWID(nick, hwidTentativa, hwidRegistrado) {
     if (!ID_CANAL_LOGS) return;
     try {
@@ -128,7 +120,6 @@ async function notificarSuspeitaHWID(nick, hwidTentativa, hwidRegistrado) {
 client.once('ready', () => {
     console.log(`[SUCESSO] Bot online e conectado como ${client.user.tag}!`);
 
-    // Status Dinâmico no Discord
     let indiceStatus = 0;
     setInterval(() => {
         const totalClientes = usuariosLiberados.size;
@@ -143,7 +134,6 @@ client.once('ready', () => {
         indiceStatus = (indiceStatus + 1) % listaStatus.length;
     }, 15000);
 
-    // Aviso automático de expiração em 48h
     setInterval(async () => {
         const agora = Date.now();
         const doisDiasEmMs = 2 * 24 * 60 * 60 * 1000;
@@ -179,7 +169,6 @@ client.once('ready', () => {
         }
     }, 60000);
 
-    // Auto-Close por Inatividade (24h)
     setInterval(async () => {
         const agora = Date.now();
         const vinteEQuatroHoras = 24 * 60 * 60 * 1000;
@@ -196,7 +185,6 @@ client.once('ready', () => {
     }, 300000);
 });
 
-// Logs Compactos
 async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEvento, cor) {
     if (!ID_CANAL_LOGS || ID_CANAL_LOGS.includes("SEU_ID")) return;
     try {
@@ -206,6 +194,7 @@ async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEve
         let dadosTicket = ticketsAtivos.get(idTicket) || { logs: [], messageId: null, ultimoContato: Date.now() };
         const dataFormatada = `<t:${Math.floor(Date.now() / 1000)}:R>`;
         
+        // CORRIGIDO: Espaço adicionado após o fechamento da tag de tempo
         dadosTicket.logs.push(`• [${dataFormatada}]${novoEvento}`);
 
         const embed = new EmbedBuilder()
@@ -260,7 +249,6 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
-    // 1. !admin_help
     if (comando === '!admin_help' || comando === '!adminhelp') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Apenas administradores do **RD4X Hub** podem usar este comando!");
@@ -285,7 +273,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 2. !financeiro / !vendas (RECURSO 4: Estatísticas financeiras exclusivas do Dono)
     if (comando === '!financeiro' || comando === '!vendas') {
         if (message.author.id !== ID_DONO) {
             return message.reply("❌ Este comando é exclusivo do **Dono** do RD4X Hub!");
@@ -309,7 +296,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 3. !resetarhwid [nick] (RECURSO 5: Permite resetar o aparelho se o cliente realmente trocar)
     if (comando === '!resetarhwid') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
@@ -330,7 +316,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 4. !painel
     if (comando === '!painel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -348,7 +333,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 5. !ajuda / !help
     if (comando === '!ajuda' || comando === '!help') {
         const embedAjuda = new EmbedBuilder()
             .setTitle("🤖 Central de Ajuda — RD4X Hub")
@@ -366,7 +350,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 6. !liberar [tempo] [nick] [@membro] [valor_opcional]
     if (comando === '!liberar') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
@@ -405,7 +388,7 @@ client.on('messageCreate', async (message) => {
             expiraEm: tempoExpiracao,
             discordId: mencaoDiscord ? mencaoDiscord.id : null,
             avisadoExpiracao: false,
-            hwid: "LIVRE", // Começa livre e trava no primeiro celular/dispositivo que usar
+            hwid: "LIVRE", 
             valorPago: valorComprado,
             dataVenda: new Date()
         });
@@ -433,7 +416,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 7. !retirarpainel [nick]
     if (comando === '!retirarpainel') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
@@ -452,7 +434,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 8. !status / !tempo / !suporte
     if (comando === '!status') {
         const nickRoblox = args[1];
         if (!nickRoblox) return message.reply("⚠️ Uso correto: `!status [nick]`");
@@ -492,7 +473,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // 9. !fechar
     if (comando === '!fechar') {
         if (!message.channel.name.startsWith('ticket-')) {
             return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
@@ -547,7 +527,6 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// --- INTERAÇÃO DE CRIAR TICKET ---
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
