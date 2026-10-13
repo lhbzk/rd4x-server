@@ -148,7 +148,7 @@ client.once('ready', () => {
                         try {
                             const user = await client.users.fetch(dados.discordId);
                             if (user) {
-                                await user.send(`⚠️ **Aviso de Expiração — RD4X Hub**\n\nOlá! Seu painel no Roblox para a conta **${nick}** irá expirar em menos de 48 horas.\nAbra um ticket no servidor para renovar seu acesso!`);
+                                await user.send(`⚠️ **Aviso de Expiração — RD4X Hub**\n\nOlá! Seu painel no Roblox para a conta **${nick}** vai expirar em menos de 48 horas.\nAbra um ticket no servidor para renovar seu acesso!`);
                             }
                         } catch (e) {}
                     }
@@ -233,7 +233,7 @@ client.on('messageCreate', async (message) => {
         ticketsAtivos.set(message.channel.id, dados);
 
         if (message.attachments.size > 0) {
-            await message.reply("Aguarde um momento, você já será respondido! ⌛");
+            await message.reply("Aguarde um momento, você já vai ser respondido! ⌛");
             await registrarLogTicket(
                 message.guild, 
                 message.channel.id, 
@@ -307,7 +307,7 @@ client.on('messageCreate', async (message) => {
             dados.hwid = "LIVRE";
             usuariosLiberados.set(nickRoblox, dados);
 
-            await message.reply(`🔄 O HWID do jogador **${nickRoblox}** foi resetado! O novo aparelho que entrar primeiro será vinculado.`);
+            await message.reply(`🔄 O HWID do jogador **${nickRoblox}** foi resetado! O novo aparelho que entrar primeiro vai ser vinculado.`);
             await registrarLogTicket(message.guild, message.channel.id, message.channel.name, `<@${message.author.id}>`, `🔄 HWID resetado para **${nickRoblox}**.`, 0x00aaff);
         } else {
             await message.reply(`❌ O jogador **${nickRoblox}** não possui cadastro ativo.`);
@@ -548,7 +548,7 @@ client.on('interactionCreate', async (interaction) => {
         
         const canalExistente = guild.channels.cache.find(c => c.name === nomeCanal);
         if (canalExistente) {
-            return interaction.reply({ content: `❌ Já tens um ticket aberto: ${canalExistente}`, ephemeral: true });
+            return interaction.reply({ content: `❌ Você já tem um ticket aberto: ${canalExistente}`, ephemeral: true });
         }
 
         cooldownTickets.set(member.id, Date.now());
@@ -565,16 +565,16 @@ client.on('interactionCreate', async (interaction) => {
             ],
         });
 
-        let textoTicket = `Para adquirir o teu Painel Admin, envia o pix para a chave abaixo:\n` +
+        let textoTicket = `Para adquirir seu Painel Admin, envie o pix para a chave abaixo:\n` +
             `\`${CHAVE_PIX}\`\n\n` +
-            `Após isso, envia o comprovativo, o teu Nick no Roblox e a confirmação da quantidade de dias.`;
+            `Após isso, envie o comprovante, seu nick no Roblox e a confirmação da quantidade de dias.`;
 
         await channel.send({ content: `<@${member.user.id}>\n\n` + textoTicket, allowedMentions: { users: [member.user.id] } });
-        await channel.send({ content: `Aguarde os responsáveis analisarem o comprovativo. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
+        await channel.send({ content: `Aguarde os responsáveis analisarem o comprovante. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
 
         await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.user.id}>`, `🟢 Ticket criado pelo cliente.`, 0x00ffcc);
 
-        await interaction.reply({ content: `✅ O teu ticket foi criado com sucesso! Podes aceder a ele aqui: ${channel}`, ephemeral: true });
+        await interaction.reply({ content: `✅ Seu ticket foi criado com sucesso! Você pode acessar ele aqui: ${channel}`, ephemeral: true });
     }
 });
 
