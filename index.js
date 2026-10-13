@@ -551,7 +551,7 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.reply({ content: `❌ Você já possui um ticket aberto: ${canalExistente}`, ephemeral: true });
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.reply({ content: `🔄 Criando seu canal de ticket, aguarde um instante...`, ephemeral: true });
         cooldownTickets.set(member.id, Date.now());
 
         const channel = await guild.channels.create({
@@ -575,7 +575,6 @@ client.on('interactionCreate', async (interaction) => {
 
         await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.user.id}>`, `🟢 Ticket criado pelo cliente.`, 0x00ffcc);
 
-        // A mensagem de confirmação agora é efêmera (apenas o usuário que clicou vê)
         await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
     }
 });
