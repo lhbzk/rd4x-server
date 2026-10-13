@@ -194,7 +194,6 @@ async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEve
         let dadosTicket = ticketsAtivos.get(idTicket) || { logs: [], messageId: null, ultimoContato: Date.now() };
         const dataFormatada = `<t:${Math.floor(Date.now() / 1000)}:R>`;
         
-        // CORRIGIDO: Espaço adicionado após o fechamento da tag de tempo
         dadosTicket.logs.push(`• [${dataFormatada}]${novoEvento}`);
 
         const embed = new EmbedBuilder()
@@ -576,6 +575,7 @@ client.on('interactionCreate', async (interaction) => {
 
         await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.user.id}>`, `🟢 Ticket criado pelo cliente.`, 0x00ffcc);
 
+        // A mensagem de confirmação agora é efêmera (apenas o usuário que clicou vê)
         await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
     }
 });
