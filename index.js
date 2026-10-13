@@ -326,7 +326,7 @@ client.on('messageCreate', async (message) => {
 
         await message.delete().catch(() => {});
         await message.channel.send({
-            content: `<@${message.author.id}> Clique em criar ticket abaixo para adquirir seu Painel Admin:`,
+            content: `Clique no botão abaixo para criar seu ticket e adquirir seu Painel Admin:`,
             components: [row]
         });
         return;
@@ -548,10 +548,9 @@ client.on('interactionCreate', async (interaction) => {
         
         const canalExistente = guild.channels.cache.find(c => c.name === nomeCanal);
         if (canalExistente) {
-            return interaction.reply({ content: `❌ Você já possui um ticket aberto: ${canalExistente}`, ephemeral: true });
+            return interaction.reply({ content: `❌ Já tens um ticket aberto: ${canalExistente}`, ephemeral: true });
         }
 
-        await interaction.reply({ content: `🔄 Criando seu canal de ticket, aguarde um instante...`, ephemeral: true });
         cooldownTickets.set(member.id, Date.now());
 
         const channel = await guild.channels.create({
@@ -566,16 +565,16 @@ client.on('interactionCreate', async (interaction) => {
             ],
         });
 
-        let textoTicket = `Para adquirir seu Painel Admin, mande seu pix na chave abaixo:\n` +
+        let textoTicket = `Para adquirir o teu Painel Admin, envia o pix para a chave abaixo:\n` +
             `\`${CHAVE_PIX}\`\n\n` +
-            `Após isso, mande o comprovante, Seu Nick no Roblox e a confirmação da quantidade de dias.`;
+            `Após isso, envia o comprovativo, o teu Nick no Roblox e a confirmação da quantidade de dias.`;
 
         await channel.send({ content: `<@${member.user.id}>\n\n` + textoTicket, allowedMentions: { users: [member.user.id] } });
-        await channel.send({ content: `Aguarde os responsáveis analisarem o comprovante. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
+        await channel.send({ content: `Aguarde os responsáveis analisarem o comprovativo. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
 
         await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.user.id}>`, `🟢 Ticket criado pelo cliente.`, 0x00ffcc);
 
-        await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso aqui: ${channel}` });
+        await interaction.reply({ content: `✅ O teu ticket foi criado com sucesso! Podes aceder a ele aqui: ${channel}`, ephemeral: true });
     }
 });
 
