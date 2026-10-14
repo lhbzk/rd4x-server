@@ -581,7 +581,7 @@ function UI.Button(parent, opts)
 btn.MouseButton1Click:Connect(function()
     pcall(function()
         local som = Instance.new("Sound", SoundService)
-        som.SoundId = "rbxassetid://9125402234"
+        som.SoundId = "rbxassetid://116105996777798"
         som.Volume = 0.3
         som:Play()
         task.delay(2, function() som:Destroy() end)
