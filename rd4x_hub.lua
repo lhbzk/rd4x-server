@@ -89,7 +89,7 @@ local cBF = Instance.new("UICorner", BotaoFlutuante)
 cBF.CornerRadius = UDim.new(1, 0)
 
 local sBF = Instance.new("UIStroke", BotaoFlutuante)
-sBF.Color = COR_VERDE
+sBF.Color = COR_VERMELHO
 sBF.Thickness = 1.5
 -- ==========================================================
 -- ✨ PULSAR DO BOTÃO FLUTUANTE
@@ -917,15 +917,12 @@ CardComunidade.ZIndex = 6
 local cCC = Instance.new("UICorner", CardComunidade)
 cCC.CornerRadius = UDim.new(0, 6)
 
-local IconeComunidade = Instance.new("TextLabel", CardComunidade)
-IconeComunidade.Size = UDim2.new(0, 36, 0, 36)
-IconeComunidade.Position = UDim2.new(0, 10, 0.5, -18)
-IconeComunidade.BackgroundColor3 = COR_TEXTO
-IconeComunidade.BackgroundTransparency = 0.1
-IconeComunidade.Text = "✳️"
-IconeComunidade.TextColor3 = COR_FUNDO
-IconeComunidade.TextSize = 18
-IconeComunidade.Font = Enum.Font.GothamBold
+local IconeComunidade = Instance.new("ImageLabel", CardComunidade)
+IconeComunidade.Size = UDim2.new(0, 40, 0, 40)
+IconeComunidade.Position = UDim2.new(0, 8, 0.5, -20)
+IconeComunidade.BackgroundTransparency = 1
+IconeComunidade.Image = "rbxassetid://1792009630538"
+IconeComunidade.ScaleType = Enum.ScaleType.Crop
 IconeComunidade.ZIndex = 7
 
 local ccIC = Instance.new("UICorner", IconeComunidade)
