@@ -570,9 +570,17 @@ function UI.Button(parent, opts)
     btn.MouseLeave:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = COR_SECUNDARIA, BackgroundTransparency = TRANSP_CARDS}):Play()
     end)
-    btn.MouseButton1Click:Connect(function()
-        if opts.Callback then pcall(opts.Callback) end
+    -- Dentro do UI.Button, antes do Callback:
+btn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local som = Instance.new("Sound", SoundService)
+        som.SoundId = "rbxassetid://9125402234"
+        som.Volume = 0.3
+        som:Play()
+        task.delay(2, function() som:Destroy() end)
     end)
+    if opts.Callback then pcall(opts.Callback) end
+end)
     return btn
 end
 
