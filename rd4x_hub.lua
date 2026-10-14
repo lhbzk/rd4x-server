@@ -2037,3 +2037,58 @@ task.spawn(function()
 end)
 
 Notify("RD4X Hub", "Interface carregada com sucesso!", 4)
+-- ==========================================================
+-- 🎵 MÚSICA DE FUNDO
+-- ==========================================================
+local musicaFundo = Instance.new("Sound", SoundService)
+musicaFundo.SoundId = "rbxassetid://5519565135"  -- troque pelo ID
+musicaFundo.Volume = 0.15
+musicaFundo.Looped = true
+musicaFundo:Play()
+
+UI.Button(Tabs.Outros, {
+    Name = "🎵 Play/Pause Música",
+    Callback = function()
+        if musicaFundo.IsPlaying then
+            musicaFundo:Pause()
+            Notify("Música", "Música pausada", 2)
+        else
+            musicaFundo:Resume()
+            Notify("Música", "Música tocando", 2)
+        end
+    end
+})
+-- ==========================================================
+-- 🎉 EFEITO DE CONFETE
+-- ==========================================================
+local function soltarConfete()
+    local cores = {
+        Color3.fromRGB(46, 204, 113),
+        Color3.fromRGB(52, 152, 219),
+        Color3.fromRGB(241, 196, 15),
+        Color3.fromRGB(231, 76, 60),
+        Color3.fromRGB(155, 89, 182),
+    }
+    for i = 1, 30 do
+        task.spawn(function()
+            local p = Instance.new("Frame", ScreenGui)
+            p.Size = UDim2.new(0, 8, 0, 8)
+            p.Position = UDim2.new(math.random(), 0, 0, -20)
+            p.BackgroundColor3 = cores[math.random(1, #cores)]
+            p.BorderSizePixel = 0
+            p.ZIndex = 9998
+
+            local c = Instance.new("UICorner", p)
+            c.CornerRadius = UDim.new(1, 0)
+
+            local duracao = math.random(15, 25) / 10
+            TweenService:Create(p, TweenInfo.new(duracao, Enum.EasingStyle.Linear), {
+                Position = UDim2.new(p.Position.X.Scale, 0, 1.2, 0),
+                Rotation = math.random(-360, 360)
+            }):Play()
+
+            task.delay(duracao, function() p:Destroy() end)
+        end)
+        task.wait(0.03)
+    end
+end
