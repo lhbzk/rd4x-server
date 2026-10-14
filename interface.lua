@@ -1,7 +1,7 @@
 -- ==========================================================
 -- 🇧🇷 Rd4X Hub Oficial - Brookhaven RP
 -- Creator: J. Epstein ( By Rd4X Team oficial )
--- Versão: 4.0 (Interface Fixa, Minimizar Interativo & Toggle Button)
+-- Versão: 4.1 (Abas Funcionais & Sistema de Painéis Dinâmicos)
 -- ==========================================================
 
 local Players = game:GetService("Players")
@@ -187,7 +187,7 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================================
--- BARRA LATERAL & CONTEÚDO PRINCIPAL
+-- BARRA LATERAL & SISTEMA DE ABAS FUNCIONAIS
 -- ==========================================================
 local Sidebar = Instance.new("Frame", MainFrame)
 Sidebar.Size = UDim2.new(0, 140, 1, -38)
@@ -204,24 +204,53 @@ sidePadding.PaddingTop = UDim.new(0, 6)
 sidePadding.PaddingLeft = UDim.new(0, 6)
 sidePadding.PaddingRight = UDim.new(0, 6)
 
+-- Container principal onde os conteúdos de cada aba vão aparecer
+local ContentHolder = Instance.new("Frame", MainFrame)
+ContentHolder.Size = UDim2.new(1, -148, 1, -44)
+ContentHolder.Position = UDim2.new(0, 144, 0, 40)
+ContentHolder.BackgroundTransparency = 1
+ContentHolder.BorderSizePixel = 0
+
 local menuOptions = {
-    {name = "Informações", iconId = "rbxassetid://89728202307832", active = true},
-    {name = "Jogador", iconId = "rbxassetid://101446301918377", active = false},
-    {name = "Avatar", iconId = "rbxassetid://6023426915", active = false},
-    {name = "Perfil", iconId = "rbxassetid://6023426915", active = false},
-    {name = "Casa", iconId = "rbxassetid://6023426915", active = false},
-    {name = "Veículo", iconId = "rbxassetid://6023426915", active = false},
-    {name = "Música", iconId = "rbxassetid://6023426915", active = false},
-    {name = "Troll", iconId = "rbxassetid://6023426915", active = false},
+    {name = "Informações", iconId = "rbxassetid://89728202307832"},
+    {name = "Jogador", iconId = "rbxassetid://101446301918377"},
+    {name = "Avatar", iconId = "rbxassetid://6023426915"},
+    {name = "Perfil", iconId = "rbxassetid://6023426915"},
+    {name = "Casa", iconId = "rbxassetid://6023426915"},
+    {name = "Veículo", iconId = "rbxassetid://6023426915"},
+    {name = "Música", iconId = "rbxassetid://6023426915"},
+    {name = "Troll", iconId = "rbxassetid://6023426915"},
 }
 
-for _, item in ipairs(menuOptions) do
+local abasConteudo = {}
+local botoesSidebar = {}
+
+-- Função para alternar entre as abas ativas
+local function AlternarAba(nomeSelecionado)
+    for nome, scrollingFrame in pairs(abasConteudo) do
+        scrollingFrame.Visible = (nome == nomeSelecionado)
+    end
+    for nome, btn in pairs(botoesSidebar) do
+        local ativo = (nome == nomeSelecionado)
+        btn.BackgroundColor3 = ativo and COR_SECUNDARIA or Color3.fromRGB(0, 0, 0)
+        btn.BackgroundTransparency = ativo and 0 or 1
+        btn.TextColor3 = ativo and COR_TEXTO or COR_TEXTO_CINZA
+        
+        local bar = btn:FindFirstChild("ActiveBar")
+        if bar then bar.Visible = ativo end
+    end
+end
+
+for i, item in ipairs(menuOptions) do
+    local ativo = (i == 1)
+    
+    -- Botão da Aba na Sidebar
     local btn = Instance.new("TextButton", Sidebar)
     btn.Size = UDim2.new(1, 0, 0, 32)
-    btn.BackgroundColor3 = item.active and COR_SECUNDARIA or Color3.fromRGB(0, 0, 0)
-    btn.BackgroundTransparency = item.active and 0 or 1
+    btn.BackgroundColor3 = ativo and COR_SECUNDARIA or Color3.fromRGB(0, 0, 0)
+    btn.BackgroundTransparency = ativo and 0 or 1
     btn.Text = "          " .. item.name
-    btn.TextColor3 = item.active and COR_TEXTO or COR_TEXTO_CINZA
+    btn.TextColor3 = ativo and COR_TEXTO or COR_TEXTO_CINZA
     btn.TextSize = 11
     btn.Font = Enum.Font.GothamMedium
     btn.TextXAlignment = Enum.TextXAlignment.Left
@@ -229,15 +258,16 @@ for _, item in ipairs(menuOptions) do
     local cornerBtn = Instance.new("UICorner", btn)
     cornerBtn.CornerRadius = UDim.new(0, 6)
 
-    if item.active then
-        local activeBar = Instance.new("Frame", btn)
-        activeBar.Size = UDim2.new(0, 2, 0, 16)
-        activeBar.Position = UDim2.new(0, 4, 0.5, -8)
-        activeBar.BackgroundColor3 = COR_TEXTO
-        activeBar.BorderSizePixel = 0
-        local cornerBar = Instance.new("UICorner", activeBar)
-        cornerBar.CornerRadius = UDim.new(0, 1)
-    end
+    -- Traço indicador no item ativo
+    local activeBar = Instance.new("Frame", btn)
+    activeBar.Name = "ActiveBar"
+    activeBar.Size = UDim2.new(0, 2, 0, 16)
+    activeBar.Position = UDim2.new(0, 4, 0.5, -8)
+    activeBar.BackgroundColor3 = COR_TEXTO
+    activeBar.BorderSizePixel = 0
+    activeBar.Visible = ativo
+    local cornerBar = Instance.new("UICorner", activeBar)
+    cornerBar.CornerRadius = UDim.new(0, 1)
 
     local iconImg = Instance.new("ImageLabel", btn)
     iconImg.Size = UDim2.new(0, 14, 0, 14)
@@ -245,23 +275,38 @@ for _, item in ipairs(menuOptions) do
     iconImg.BackgroundTransparency = 1
     iconImg.Image = item.iconId
     iconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+
+    botoesSidebar[item.name] = btn
+
+    -- Cria o ScrollingFrame correspondente ao conteúdo desta aba
+    local ContentFrame = Instance.new("ScrollingFrame", ContentHolder)
+    ContentFrame.Size = UDim2.new(1, 0, 1, 0)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.BorderSizePixel = 0
+    ContentFrame.ScrollBarThickness = 2
+    ContentFrame.ScrollBarImageColor3 = COR_BORDA
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 360)
+    ContentFrame.Visible = ativo
+
+    local contentLayout = Instance.new("UIListLayout", ContentFrame)
+    contentLayout.Padding = UDim.new(0, 8)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    abasConteudo[item.name] = ContentFrame
+
+    -- Clique para trocar de aba
+    btn.MouseButton1Click:Connect(function()
+        AlternarAba(item.name)
+    end)
 end
 
-local ContentFrame = Instance.new("ScrollingFrame", MainFrame)
-ContentFrame.Size = UDim2.new(1, -148, 1, -44)
-ContentFrame.Position = UDim2.new(0, 144, 0, 40)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.BorderSizePixel = 0
-ContentFrame.ScrollBarThickness = 2
-ContentFrame.ScrollBarImageColor3 = COR_BORDA
-ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 360)
+-- Pegamos a aba de Informações para preencher com os cards iniciais
+local InfoTab = abasConteudo["Informações"]
 
-local contentLayout = Instance.new("UIListLayout", ContentFrame)
-contentLayout.Padding = UDim.new(0, 8)
-contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Conteúdo da Aba Informações
-local LinkText = Instance.new("TextLabel", ContentFrame)
+-- ==========================================================
+-- CONTEÚDO DA ABA INFORMAÇÕES
+-- ==========================================================
+local LinkText = Instance.new("TextLabel", InfoTab)
 LinkText.Size = UDim2.new(1, -8, 0, 16)
 LinkText.BackgroundTransparency = 1
 LinkText.Text = "https://discord.gg/RefSgafC2"
@@ -270,7 +315,7 @@ LinkText.TextSize = 10
 LinkText.Font = Enum.Font.Gotham
 LinkText.TextXAlignment = Enum.TextXAlignment.Left
 
-local DiscordCard = Instance.new("Frame", ContentFrame)
+local DiscordCard = Instance.new("Frame", InfoTab)
 DiscordCard.Size = UDim2.new(1, -8, 0, 52)
 DiscordCard.BackgroundColor3 = COR_SECUNDARIA
 DiscordCard.BorderSizePixel = 0
@@ -306,7 +351,7 @@ SubDC.TextSize = 10
 SubDC.Font = Enum.Font.Gotham
 SubDC.TextXAlignment = Enum.TextXAlignment.Left
 
-local CopyBtn = Instance.new("TextButton", ContentFrame)
+local CopyBtn = Instance.new("TextButton", InfoTab)
 CopyBtn.Size = UDim2.new(1, -8, 0, 30)
 CopyBtn.BackgroundColor3 = COR_VERDE
 CopyBtn.Text = "Copiar Link do Discord"
@@ -320,7 +365,7 @@ CopyBtn.MouseButton1Click:Connect(function()
     pcall(function() setclipboard("https://discord.gg/RefSgafC2") end)
 end)
 
-local InfoBox = Instance.new("Frame", ContentFrame)
+local InfoBox = Instance.new("Frame", InfoTab)
 InfoBox.Size = UDim2.new(1, -8, 0, 52)
 InfoBox.BackgroundColor3 = COR_SECUNDARIA
 InfoBox.BorderSizePixel = 0
@@ -348,7 +393,7 @@ InfoDesc.Font = Enum.Font.Gotham
 InfoDesc.TextXAlignment = Enum.TextXAlignment.Left
 InfoDesc.TextYAlignment = Enum.TextYAlignment.Top
 
-local ReleaseBox = Instance.new("Frame", ContentFrame)
+local ReleaseBox = Instance.new("Frame", InfoTab)
 ReleaseBox.Size = UDim2.new(1, -8, 0, 75)
 ReleaseBox.BackgroundColor3 = COR_SECUNDARIA
 ReleaseBox.BorderSizePixel = 0
@@ -377,7 +422,7 @@ ReleaseDesc.TextXAlignment = Enum.TextXAlignment.Left
 ReleaseDesc.TextYAlignment = Enum.TextYAlignment.Top
 ReleaseDesc.TextWrapped = true
 
-local CreditsBox = Instance.new("Frame", ContentFrame)
+local CreditsBox = Instance.new("Frame", InfoTab)
 CreditsBox.Size = UDim2.new(1, -8, 0, 42)
 CreditsBox.BackgroundColor3 = COR_SECUNDARIA
 CreditsBox.BorderSizePixel = 0
@@ -404,7 +449,7 @@ MinimizeBtn.MouseButton1Click:Connect(function()
     local targetSize = isMinimized and UDim2.new(0, 530, 0, 38) or UDim2.new(0, 530, 0, 370)
     
     Sidebar.Visible = not isMinimized
-    ContentFrame.Visible = not isMinimized
+    ContentHolder.Visible = not isMinimized
     
     TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
         Size = targetSize
