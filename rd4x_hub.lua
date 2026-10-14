@@ -79,7 +79,7 @@ BotaoFlutuante.Position = UDim2.new(0, 20, 0.5, -23)
 BotaoFlutuante.BackgroundColor3 = COR_SECUNDARIA
 BotaoFlutuante.BackgroundTransparency = 0.15
 BotaoFlutuante.BorderSizePixel = 0
-BotaoFlutuante.Image = "rbxassetid://1792009630538"
+BotaoFlutuante.Image = "rbxassetid://109276734890323"
 BotaoFlutuante.AutoButtonColor = false
 BotaoFlutuante.Visible = false
 BotaoFlutuante.ZIndex = 1000
@@ -272,7 +272,7 @@ local IconHeader = Instance.new("ImageLabel", Header)
 IconHeader.Size = UDim2.new(0, 24, 0, 24)
 IconHeader.Position = UDim2.new(0, 10, 0, 7)
 IconHeader.BackgroundTransparency = 1
-IconHeader.Image = "rbxassetid://1792009630538"
+IconHeader.Image = "rbxassetid://109276734890323"
 IconHeader.ScaleType = Enum.ScaleType.Crop
 IconHeader.ZIndex = 6
 
@@ -900,7 +900,7 @@ local infoContent = Tabs.Principal
 local LinkText = Instance.new("TextLabel", infoContent)
 LinkText.Size = UDim2.new(1, -4, 0, 14)
 LinkText.BackgroundTransparency = 1
-LinkText.Text = "https://discord.gg/RefSgafC2"
+LinkText.Text = "https://discord.gg/Eh8ga7z55"
 LinkText.TextColor3 = COR_TEXTO_CINZA
 LinkText.TextSize = 10
 LinkText.Font = Enum.Font.Gotham
@@ -920,7 +920,7 @@ local IconeComunidade = Instance.new("ImageLabel", CardComunidade)
 IconeComunidade.Size = UDim2.new(0, 40, 0, 40)
 IconeComunidade.Position = UDim2.new(0, 8, 0.5, -20)
 IconeComunidade.BackgroundTransparency = 1
-IconeComunidade.Image = "rbxassetid://1792009630538"
+IconeComunidade.Image = "rbxassetid://109276734890323"
 IconeComunidade.ScaleType = Enum.ScaleType.Crop
 IconeComunidade.ZIndex = 7
 
@@ -971,7 +971,7 @@ BotaoCopyLink.MouseLeave:Connect(function()
     TweenService:Create(BotaoCopyLink, TweenInfo.new(0.15), {BackgroundTransparency = TRANSP_BOTAO_VERDE}):Play()
 end)
 BotaoCopyLink.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard("https://discord.gg/RefSgafC2") end)
+    pcall(function() setclipboard("https://discord.gg/Eh8ga7z55") end)
     Notify("RD4X", "Link do Discord copiado!", 3)
 end)
 
