@@ -1672,6 +1672,79 @@ end})
 UI.Button(Tabs.Servidor, { Name = "🚪 Sair do Servidor", Callback = function()
     LocalPlayer:Kick("Você saiu do servidor usando o RD4X Hub.")
 end})
+UI.Button(Tabs.Servidor, {
+    Name = "🎯 Menu rápido TP",
+    Callback = function()
+        local menu = Instance.new("Frame", ScreenGui)
+        menu.Size = UDim2.new(0, 220, 0, 300)
+        menu.Position = UDim2.new(0.5, -110, 0.5, -150)
+        menu.BackgroundColor3 = COR_SECUNDARIA
+        menu.BackgroundTransparency = 0.1
+        menu.BorderSizePixel = 0
+        menu.ZIndex = 2000
+
+        local cM = Instance.new("UICorner", menu)
+        cM.CornerRadius = UDim.new(0, 8)
+
+        local titulo = Instance.new("TextLabel", menu)
+        titulo.Size = UDim2.new(1, 0, 0, 30)
+        titulo.BackgroundTransparency = 1
+        titulo.Text = "🎯 Teleportar para..."
+        titulo.TextColor3 = COR_TEXTO
+        titulo.TextSize = 12
+        titulo.Font = Enum.Font.GothamBold
+        titulo.ZIndex = 2001
+
+        local scroll = Instance.new("ScrollingFrame", menu)
+        scroll.Size = UDim2.new(1, -10, 1, -40)
+        scroll.Position = UDim2.new(0, 5, 0, 35)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 2
+        scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.ZIndex = 2001
+
+        local layout = Instance.new("UIListLayout", scroll)
+        layout.Padding = UDim.new(0, 4)
+
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                local b = Instance.new("TextButton", scroll)
+                b.Size = UDim2.new(1, -4, 0, 26)
+                b.BackgroundColor3 = COR_FUNDO
+                b.BackgroundTransparency = 0.3
+                b.BorderSizePixel = 0
+                b.Text = p.Name
+                b.TextColor3 = COR_TEXTO
+                b.TextSize = 10
+                b.Font = Enum.Font.Gotham
+                b.ZIndex = 2002
+
+                local cB = Instance.new("UICorner", b)
+                cB.CornerRadius = UDim.new(0, 6)
+
+                b.MouseButton1Click:Connect(function()
+                    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                    end
+                    menu:Destroy()
+                end)
+            end
+        end
+
+        local x = Instance.new("TextButton", menu)
+        x.Size = UDim2.new(0, 20, 0, 20)
+        x.Position = UDim2.new(1, -24, 0, 5)
+        x.BackgroundTransparency = 1
+        x.Text = "✕"
+        x.TextColor3 = COR_VERMELHO
+        x.TextSize = 12
+        x.Font = Enum.Font.GothamBold
+        x.ZIndex = 2002
+        x.MouseButton1Click:Connect(function() menu:Destroy() end)
+    end
+})
 
 --------------------------------------------------------------------------------
 -- ABA CARROS
