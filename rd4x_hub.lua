@@ -72,7 +72,7 @@ ScreenGui.Parent = CoreGui
 --------------------------------------------------------------------------------
 -- BOTÃO FLUTUANTE (aparece quando hub está fechado)
 --------------------------------------------------------------------------------
-local BotaoFlutuante = Instance.new("TextButton", ScreenGui)
+local BotaoFlutuante = Instance.new("ImageButton", ScreenGui)
 BotaoFlutuante.Name = "BotaoFlutuanteRD4X"
 BotaoFlutuante.Size = UDim2.new(0, 46, 0, 46)
 BotaoFlutuante.Position = UDim2.new(0, 20, 0.5, -23)
