@@ -1745,7 +1745,37 @@ UI.Button(Tabs.Servidor, {
         x.MouseButton1Click:Connect(function() menu:Destroy() end)
     end
 })
+local waypoints = {}
 
+UI.Button(Tabs.Servidor, {
+    Name = "📍 Salvar local atual",
+    Callback = function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local pos = LocalPlayer.Character.HumanoidRootPart.CFrame
+            table.insert(waypoints, {nome = "Local " .. #waypoints + 1, pos = pos})
+            Notify("Waypoint", "Salvo local " .. #waypoints, 2)
+        end
+    end
+})
+
+UI.Button(Tabs.Servidor, {
+    Name = "📍 Voltar ao último waypoint",
+    Callback = function()
+        if #waypoints > 0 then
+            local wp = waypoints[#waypoints]
+            LocalPlayer.Character.HumanoidRootPart.CFrame = wp.pos
+            Notify("Waypoint", "Voltou: " .. wp.nome, 2)
+        end
+    end
+})
+
+UI.Button(Tabs.Servidor, {
+    Name = "📍 Limpar waypoints",
+    Callback = function()
+        waypoints = {}
+        Notify("Waypoint", "Limpos!", 2)
+    end
+})
 --------------------------------------------------------------------------------
 -- ABA CARROS
 --------------------------------------------------------------------------------
@@ -2179,3 +2209,47 @@ local function soltarConfete()
         task.wait(0.03)
     end
 end
+task.spawn(function()
+    task.wait(0.5)
+    local bemVindo = Instance.new("Frame", ScreenGui)
+    bemVindo.Size = UDim2.new(0, 300, 0, 100)
+    bemVindo.Position = UDim2.new(0.5, -150, 0.5, -50)
+    bemVindo.BackgroundColor3 = COR_SECUNDARIA
+    bemVindo.BackgroundTransparency = 0.1
+    bemVindo.BorderSizePixel = 0
+    bemVindo.ZIndex = 10000
+
+    local c = Instance.new("UICorner", bemVindo)
+    c.CornerRadius = UDim.new(0, 10)
+
+    local s = Instance.new("UIStroke", bemVindo)
+    s.Color = COR_VERDE
+    s.Thickness = 2
+
+    local t1 = Instance.new("TextLabel", bemVindo)
+    t1.Size = UDim2.new(1, 0, 0, 30)
+    t1.Position = UDim2.new(0, 0, 0, 15)
+    t1.BackgroundTransparency = 1
+    t1.Text = "🎉 Bem-vindo ao Rd4X Hub!"
+    t1.TextColor3 = COR_VERDE
+    t1.TextSize = 16
+    t1.Font = Enum.Font.GothamBold
+    t1.ZIndex = 10001
+
+    local t2 = Instance.new("TextLabel", bemVindo)
+    t2.Size = UDim2.new(1, 0, 0, 30)
+    t2.Position = UDim2.new(0, 0, 0, 50)
+    t2.BackgroundTransparency = 1
+    t2.Text = "Olá, " .. LocalPlayer.Name .. "!"
+    t2.TextColor3 = COR_TEXTO
+    t2.TextSize = 13
+    t2.Font = Enum.Font.Gotham
+    t2.ZIndex = 10001
+
+    task.wait(3)
+    TweenService:Create(bemVindo, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(t1, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+    TweenService:Create(t2, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+    task.wait(0.6)
+    bemVindo:Destroy()
+end)
