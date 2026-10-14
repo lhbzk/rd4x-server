@@ -228,7 +228,14 @@ local function criarBolha()
     local bolha = Instance.new("Frame", BolhasContainer)
     bolha.Size = UDim2.new(0, tam, 0, tam)
     bolha.Position = UDim2.new(math.random() * 0.95, 0, 1, 10)
-    bolha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    local cores = {
+    Color3.fromRGB(46, 204, 113),   -- verde
+    Color3.fromRGB(52, 152, 219),   -- azul
+    Color3.fromRGB(155, 89, 182),   -- roxo
+    Color3.fromRGB(241, 196, 15),   -- amarelo
+    Color3.fromRGB(231, 76, 60),    -- vermelho
+}
+bolha.BackgroundColor3 = cores[math.random(1, #cores)]
     bolha.BackgroundTransparency = math.random(15, 40) / 100
     bolha.BorderSizePixel = 0
     bolha.ZIndex = 0
