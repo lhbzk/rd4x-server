@@ -270,12 +270,16 @@ Header.Size = UDim2.new(1, 0, 0, 38)
 Header.BackgroundTransparency = 1
 Header.ZIndex = 5
 
-local IconHeader = Instance.new("TextLabel", Header)
-IconHeader.Size = UDim2.new(0, 20, 0, 20)
-IconHeader.Position = UDim2.new(0, 10, 0, 9)
+local IconHeader = Instance.new("ImageLabel", Header)
+IconHeader.Size = UDim2.new(0, 24, 0, 24)
+IconHeader.Position = UDim2.new(0, 10, 0, 7)
 IconHeader.BackgroundTransparency = 1
-IconHeader.Text = "🇧🇷"
-IconHeader.TextSize = 13
+IconHeader.Image = "rbxassetid://1792009630538"
+IconHeader.ScaleType = Enum.ScaleType.Crop
+IconHeader.ZIndex = 6
+
+local cIH = Instance.new("UICorner", IconHeader)
+cIH.CornerRadius = UDim.new(1, 0)
 IconHeader.ZIndex = 6
 
 local TitleHeader = Instance.new("TextLabel", Header)
