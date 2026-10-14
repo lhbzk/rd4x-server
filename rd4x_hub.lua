@@ -92,6 +92,43 @@ cBF.CornerRadius = UDim.new(1, 0)
 local sBF = Instance.new("UIStroke", BotaoFlutuante)
 sBF.Color = COR_VERDE
 sBF.Thickness = 1.5
+-- ==========================================================
+-- ✨ PULSAR DO BOTÃO FLUTUANTE
+-- ==========================================================
+local pulsando = true
+local tamanhoNormal = UDim2.new(0, 46, 0, 46)
+local tamanhoPulsado = UDim2.new(0, 54, 0, 54)
+
+task.spawn(function()
+    while pulsando and BotaoFlutuante.Parent do
+        -- Fase 1: cresce + brilha
+        TweenService:Create(BotaoFlutuante, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            Size = tamanhoPulsado,
+            Position = BotaoFlutuante.Position - UDim2.new(0, 4, 0, 4)
+        }):Play()
+        TweenService:Create(sBF, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            Transparency = 0,
+            Thickness = 2.5
+        }):Play()
+        task.wait(0.6)
+
+        -- Fase 2: volta ao normal
+        TweenService:Create(BotaoFlutuante, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            Size = tamanhoNormal,
+            Position = BotaoFlutuante.Position + UDim2.new(0, 4, 0, 4)
+        }):Play()
+        TweenService:Create(sBF, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            Transparency = 0.5,
+            Thickness = 1.5
+        }):Play()
+        task.wait(0.6)
+    end
+end)
+
+-- Pausa o pulso ao passar o mouse (fica parado pra clicar melhor)
+BotaoFlutuante.MouseEnter:Connect(function()
+    pulsando = false
+end)
 
 -- Arrastar botão flutuante
 local bfDragging, bfDragStart, bfStartPos
