@@ -79,7 +79,6 @@ BotaoFlutuante.Position = UDim2.new(0, 20, 0.5, -23)
 BotaoFlutuante.BackgroundColor3 = COR_SECUNDARIA
 BotaoFlutuante.BackgroundTransparency = 0.15
 BotaoFlutuante.BorderSizePixel = 0
-BotaoFlutuante.Text = ""
 BotaoFlutuante.Image = "rbxassetid://1792009630538"
 BotaoFlutuante.AutoButtonColor = false
 BotaoFlutuante.Visible = false
