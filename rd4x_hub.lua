@@ -165,6 +165,7 @@ MainFrame.BackgroundTransparency = TRANSP_FUNDO
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.ZIndex = 1
+MainFrame.Visible = false
 
 local cornerMain = Instance.new("UICorner", MainFrame)
 cornerMain.CornerRadius = UDim.new(0, 10)
@@ -2418,7 +2419,18 @@ task.spawn(function()
 
         task.wait(0.35)
         popup:Destroy()
-    end
+            MainFrame.Visible = true
+            local tamanhoFinal = MainFrame.size
+            local posFinal = MainFrame.Position
+
+            MainFrame.size = UDim2.new(0,0,0,0)
+            MainFrame.Position = UDim2.new(0.5,0,0.5,0)
+
+            TweenService:Create(MainFrame, TweenInfo.new(0.5,Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    Size = tamanhoFinal,
+                    Position = posFinal
+                }):Play()
+            end
 
     fechar.MouseButton1Click:Connect(fecharPopup)
     botaoOk.MouseButton1Click:Connect(fecharPopup)
@@ -2431,16 +2443,6 @@ task.spawn(function()
         Position = UDim2.new(0.5, -170, 0.5, -115)
     }):Play()
 end)
-local tamanhoFinal = MainFrame.Size
-local posFinal = MainFrame.Position
-
-MainFrame.Size = UDim2.new(0, 0, 0, 0)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-
-TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = tamanhoFinal,
-    Position = posFinal
-}):Play()
 -- ==========================================================
 -- 📝 ALTERAR BIO (Welcome, NomeDoJogador)
 -- ==========================================================
