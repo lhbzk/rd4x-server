@@ -2242,7 +2242,7 @@ local PROP_CATEGORIA   = "Furniture"
 
 local alvoPropSelecionado = LocalPlayer.Name
 
--- 1. Lista de Jogadores (Inclui você na lista)
+-- 1. Lista de Jogadores (Inclui você para facilidade de testes)
 local function obterListaProp()
     local lista = {}
     for _, p in ipairs(Players:GetPlayers()) do
@@ -2540,6 +2540,7 @@ local function executarBringProp(nomeAlvo)
     end)
     return true
 end
+
 -- ==========================================================
 -- 🔘 BOTÕES DA ABA PROPS
 -- ==========================================================
@@ -2585,7 +2586,6 @@ UI.Button(Tabs.Troll, {
         Notify("Props", "Props limpos!", 2)
     end,
 })
-
 
 --------------------------------------------------------------------------------
 -- ABA OUTROS
