@@ -2273,19 +2273,56 @@ UI.Button(Tabs.Troll, {
 -- ───────── FUNÇÕES BASE ─────────
 local function pegarPropMaker()
     local RE = ReplicatedStorage:FindFirstChild("RE")
-    if not RE then return nil end
+    local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if not RE or not Remotes then return nil end
+
+    -- 1️⃣ Abre a mochila (HUD)
+    local telemetry = Remotes:FindFirstChild("TelemetryClientInteraction")
+    if telemetry then
+        pcall(function()
+            telemetry:FireServer("uiInteraction", {
+                buttonName = "BackpackHudButton",
+                inVehicle = false,
+            })
+        end)
+    end
+    task.wait(0.15)
+
+    -- 2️⃣ Pede o tool pro servidor
     local toolRemote = RE:FindFirstChild("1Too1l")
-    if not toolRemote then return nil end
+    if toolRemote then
+        pcall(function()
+            toolRemote:InvokeServer("PickingTools", "PropMaker")
+        end)
+    end
+    task.wait(0.3)
 
-    pcall(function()
-        toolRemote:InvokeServer("PickingTools", "PropMaker")
-    end)
-    task.wait(0.4)
+    -- 3️⃣ Abre o menu de props
+    local clearRemote = RE:FindFirstChild("1Clea1rTool1s")
+    if clearRemote then
+        pcall(function()
+            clearRemote:FireServer("OpenPropMenu")
+        end)
+    end
+    task.wait(0.15)
 
+    -- 4️⃣ Clica no PropMaker pra EQUIPAR (essa é a chave!)
+    if telemetry then
+        pcall(function()
+            telemetry:FireServer("filterClick", {
+                itemType = "Tools",
+                name = "PropMaker",
+            })
+        end)
+    end
+    task.wait(0.3)
+
+    -- 5️⃣ Confirma que pegou
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     local char = LocalPlayer.Character
     local propMaker = (backpack and backpack:FindFirstChild("PropMaker"))
         or (char and char:FindFirstChild("PropMaker"))
+
     return propMaker
 end
 
