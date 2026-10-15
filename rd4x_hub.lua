@@ -2403,7 +2403,7 @@ task.spawn(function()
         for _, obj in ipairs(popup:GetDescendants()) do
             pcall(function()
                 if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                    TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
                 elseif obj:IsA("Frame") then
                     TweenService:Create(obj, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
                 elseif obj:IsA("UIStroke") then
