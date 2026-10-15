@@ -2229,6 +2229,518 @@ UI.Button(Tabs.Troll, {
         Notify("Troll", "Ônibus parado", 2)
     end
 })
+-- ==========================================================
+-- 📦 SISTEMA DE PROPS AVANÇADO (Kill / Bring / All)
+-- ==========================================================
+
+-- ───────── CONFIGURAÇÕES ─────────
+local PROP_KILL_Y      = -300         -- Onde o prop vai ao matar
+local PROP_MOVE_SPEED  = 5            -- Velocidade do up/down
+local PROP_MOVE_RANGE  = 3            -- Amplitude do up/down (studs)
+local TEMPO_MAX_SIT    = 8            -- Tempo máximo esperando sentar
+local PROP_TIPO        = "FurnitureBleachers"
+local PROP_CATEGORIA   = "Furniture"
+
+-- ───────── DROPDOWN DE ALVO ─────────
+local alvoPropSelecionado = nil
+
+local function obterListaProp()
+    local lista = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(lista, p.Name)
+        end
+    end
+    if #lista == 0 then table.insert(lista, "Ninguém") end
+    return lista
+end
+
+local dropdownProp = UI.Dropdown(Tabs.Troll, {
+    Name = "🎯 Alvo (Props)",
+    Options = obterListaProp(),
+    CurrentOption = {},
+    Callback = function(opt) alvoPropSelecionado = opt[1] end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🔄 Atualizar Lista (Props)",
+    Callback = function()
+        dropdownProp:Refresh(obterListaProp())
+        Notify("Props", "Lista atualizada!", 2)
+    end,
+})
+
+-- ───────── FUNÇÕES BASE ─────────
+local function pegarPropMaker()
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    if not RE then return nil end
+    local toolRemote = RE:FindFirstChild("1Too1l")
+    if not toolRemote then return nil end
+
+    pcall(function()
+        toolRemote:InvokeServer("PickingTools", "PropMaker")
+    end)
+    task.wait(0.4)
+
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local char = LocalPlayer.Character
+    local propMaker = (backpack and backpack:FindFirstChild("PropMaker"))
+        or (char and char:FindFirstChild("PropMaker"))
+    return propMaker
+end
+
+local function selecionarProp(nome, categoria)
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    if not RE then return end
+    local clearRemote = RE:FindFirstChild("1Clea1rTool1s")
+    if not clearRemote then return end
+
+    pcall(function()
+        clearRemote:FireServer("OpenPropMenu")
+        clearRemote:FireServer("RequestingPropName", nome or PROP_TIPO, categoria or PROP_CATEGORIA)
+    end)
+    task.wait(0.25)
+end
+
+local function spawnarProp(posicao)
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    local char = LocalPlayer.Character
+    local propMaker = (backpack and backpack:FindFirstChild("PropMaker"))
+        or (char and char:FindFirstChild("PropMaker"))
+
+    if not propMaker then return false end
+    local toolProp = propMaker:FindFirstChild("Tool_PropMake")
+    if not toolProp then return false end
+
+    local chao = Workspace:FindFirstChild("Model")
+        and Workspace.Model:FindFirstChild("Street")
+        and Workspace.Model.Street:FindFirstChild("Street")
+        or Workspace
+
+    pcall(function()
+        toolProp:FireServer(chao, posicao)
+    end)
+    return true
+end
+
+local function encontrarMeusProps()
+    local WorkspaceCom = Workspace:FindFirstChild("WorkspaceCom")
+    if not WorkspaceCom then return {} end
+
+    local props = {}
+    for _, container in ipairs(WorkspaceCom:GetChildren()) do
+        for _, prop in ipairs(container:GetChildren()) do
+            if prop.Name:find("Prop" .. LocalPlayer.Name, 1, true)
+               or prop.Name:find(LocalPlayer.Name, 1, true) then
+                if prop:FindFirstChild("SetCurrentCFrame") then
+                    table.insert(props, prop)
+                end
+            end
+        end
+    end
+    return props
+end
+
+local function moverProp(prop, cf)
+    if not prop or not prop.Parent then return end
+    local remote = prop:FindFirstChild("SetCurrentCFrame")
+    if remote then
+        pcall(function()
+            remote:InvokeServer(cf)
+        end)
+    end
+end
+
+local function deletarUmProp()
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    if not RE then return end
+    local propsRemote = RE:FindFirstChild("Props")
+    if propsRemote then
+        pcall(function()
+            propsRemote:FireServer("DeleteProp")
+        end)
+    end
+end
+
+local function deletarTodosProps()
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    if not RE then return end
+    local clearRemote = RE:FindFirstChild("1Clea1rTool1s")
+    if clearRemote then
+        pcall(function()
+            clearRemote:FireServer("ClearAllProps")
+        end)
+    end
+end
+
+-- ───────── FUNÇÕES DE AÇÃO ─────────
+
+-- 🎯 Kill Prop: spawna, faz subir/descer, teleporta pro -300, deleta
+local function executarKillProp(nomeAlvo)
+    local alvo = Players:FindFirstChild(nomeAlvo)
+    if not alvo or not alvo.Character then return false end
+    local hum = alvo.Character:FindFirstChild("Humanoid")
+    local hrp = alvo.Character:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return false end
+
+    -- Conta props antes
+    local antes = #encontrarMeusProps()
+
+    -- Spawna
+    spawnarProp(hrp.Position)
+    task.wait(0.4)
+
+    -- Pega o prop novo
+    local agora = encontrarMeusProps()
+    if #agora <= antes then return false end
+    local prop = agora[#agora]
+
+    -- Loop de up/down até sentar
+    local sentou = false
+    local t0 = tick()
+    local conexao
+
+    conexao = RunService.Heartbeat:Connect(function()
+        if sentou then return end
+        if tick() - t0 > TEMPO_MAX_SIT then
+            if conexao then conexao:Disconnect() end
+            return
+        end
+
+        if not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+
+        local hrpAtual = alvo.Character.HumanoidRootPart
+        local t = tick() * PROP_MOVE_SPEED
+        local offsetY = math.sin(t) * PROP_MOVE_RANGE
+        local novaPos = hrpAtual.Position + Vector3.new(0, offsetY, 0)
+
+        moverProp(prop, CFrame.new(novaPos))
+
+        if hum.Sit then
+            sentou = true
+            if conexao then conexao:Disconnect() end
+
+            task.wait(0.15)
+            local posFinal = Vector3.new(novaPos.X, PROP_KILL_Y, novaPos.Z)
+            moverProp(prop, CFrame.new(posFinal))
+
+            task.wait(0.6)
+            deletarUmProp()
+        end
+    end)
+
+    return true
+end
+
+-- 🎯 Bring Prop: spawna, faz subir/descer, traz pra minha posição, deleta
+local function executarBringProp(nomeAlvo)
+    local alvo = Players:FindFirstChild(nomeAlvo)
+    if not alvo or not alvo.Character then return false end
+    local hum = alvo.Character:FindFirstChild("Humanoid")
+    local hrp = alvo.Character:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return false end
+
+    local antes = #encontrarMeusProps()
+    spawnarProp(hrp.Position)
+    task.wait(0.4)
+
+    local agora = encontrarMeusProps()
+    if #agora <= antes then return false end
+    local prop = agora[#agora]
+
+    local sentou = false
+    local t0 = tick()
+    local conexao
+
+    conexao = RunService.Heartbeat:Connect(function()
+        if sentou then return end
+        if tick() - t0 > TEMPO_MAX_SIT then
+            if conexao then conexao:Disconnect() end
+            return
+        end
+
+        if not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+
+        local hrpAtual = alvo.Character.HumanoidRootPart
+        local t = tick() * PROP_MOVE_SPEED
+        local offsetY = math.sin(t) * PROP_MOVE_RANGE
+        local novaPos = hrpAtual.Position + Vector3.new(0, offsetY, 0)
+
+        moverProp(prop, CFrame.new(novaPos))
+
+        if hum.Sit then
+            sentou = true
+            if conexao then conexao:Disconnect() end
+
+            task.wait(0.15)
+            -- Vai pra MINHA posição
+            local minhaPos = LocalPlayer.Character
+                and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                and LocalPlayer.Character.HumanoidRootPart.Position
+                or Vector3.new(0, 10, 0)
+
+            moverProp(prop, CFrame.new(minhaPos + Vector3.new(0, 2, 0)))
+
+            task.wait(0.6)
+            deletarUmProp()
+        end
+    end)
+
+    return true
+end
+
+-- 🎯 Kill All: spawna N props, espera 3s, mata geral, limpa
+local function executarKillAll()
+    local alvos = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(alvos, p)
+        end
+    end
+
+    if #alvos == 0 then
+        Notify("Props", "Nenhum alvo no servidor", 2)
+        return
+    end
+
+    Notify("Props", "Spawnando props em " .. #alvos .. " jogadores...", 3)
+
+    -- Spawna props em todos
+    local propsPorJogador = {}
+    for _, alvo in ipairs(alvos) do
+        local antes = #encontrarMeusProps()
+        spawnarProp(alvo.Character.HumanoidRootPart.Position)
+        task.wait(0.25)
+        local depois = encontrarMeusProps()
+        if #depois > antes then
+            propsPorJogador[alvo] = depois[#depois]
+        end
+    end
+
+    Notify("Props", "Aguardando 3s antes de mover...", 3)
+    task.wait(3)
+
+    -- Loop de movimento para todos
+    local ativos = {}
+    for alvo, prop in pairs(propsPorJogador) do
+        ativos[alvo] = {prop = prop, sentou = false, conexao = nil}
+    end
+
+    local t0 = tick()
+    local tempoMax = TEMPO_MAX_SIT + 3
+
+    local conexaoMestre
+    conexaoMestre = RunService.Heartbeat:Connect(function()
+        if tick() - t0 > tempoMax then
+            if conexaoMestre then conexaoMestre:Disconnect() end
+            -- Teleporta todo mundo pro void
+            for alvo, dados in pairs(ativos) do
+                if dados.prop and dados.prop.Parent then
+                    local cf = dados.prop:GetPivot()
+                    moverProp(dados.prop, CFrame.new(cf.X, PROP_KILL_Y, cf.Z))
+                end
+            end
+            task.wait(0.6)
+            deletarTodosProps()
+            Notify("Props", "Kill All finalizado!", 2)
+            return
+        end
+
+        local todosSentaram = true
+
+        for alvo, dados in pairs(ativos) do
+            if dados.sentou then
+                -- Já sentou, só verifica se precisa mover
+            else
+                if alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
+                    local hum = alvo.Character:FindFirstChild("Humanoid")
+                    local hrp = alvo.Character.HumanoidRootPart
+
+                    local t = tick() * PROP_MOVE_SPEED
+                    local offsetY = math.sin(t) * PROP_MOVE_RANGE
+                    local novaPos = hrp.Position + Vector3.new(0, offsetY, 0)
+
+                    moverProp(dados.prop, CFrame.new(novaPos))
+
+                    if hum and hum.Sit then
+                        dados.sentou = true
+                    else
+                        todosSentaram = false
+                    end
+                end
+            end
+        end
+
+        if todosSentaram then
+            if conexaoMestre then conexaoMestre:Disconnect() end
+            task.wait(0.2)
+
+            -- Teleporta todos pro void
+            for alvo, dados in pairs(ativos) do
+                if dados.prop and dados.prop.Parent then
+                    local cf = dados.prop:GetPivot()
+                    moverProp(dados.prop, CFrame.new(cf.X, PROP_KILL_Y, cf.Z))
+                end
+            end
+
+            task.wait(0.8)
+            deletarTodosProps()
+            Notify("Props", "Kill All completo!", 2)
+        end
+    end)
+end
+
+-- 🎯 Bring All: spawna N props, espera 3s, traz todos, limpa
+local function executarBringAll()
+    local alvos = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(alvos, p)
+        end
+    end
+
+    if #alvos == 0 then
+        Notify("Props", "Nenhum alvo no servidor", 2)
+        return
+    end
+
+    Notify("Props", "Spawnando props em " .. #alvos .. " jogadores...", 3)
+
+    local propsPorJogador = {}
+    for _, alvo in ipairs(alvos) do
+        local antes = #encontrarMeusProps()
+        spawnarProp(alvo.Character.HumanoidRootPart.Position)
+        task.wait(0.25)
+        local depois = encontrarMeusProps()
+        if #depois > antes then
+            propsPorJogador[alvo] = depois[#depois]
+        end
+    end
+
+    Notify("Props", "Aguardando 3s...", 3)
+    task.wait(3)
+
+    local ativos = {}
+    for alvo, prop in pairs(propsPorJogador) do
+        ativos[alvo] = {prop = prop, sentou = false}
+    end
+
+    local t0 = tick()
+    local conexaoMestre
+    conexaoMestre = RunService.Heartbeat:Connect(function()
+        if tick() - t0 > TEMPO_MAX_SIT + 3 then
+            if conexaoMestre then conexaoMestre:Disconnect() end
+            deletarTodosProps()
+            return
+        end
+
+        local todosSentaram = true
+        for alvo, dados in pairs(ativos) do
+            if not dados.sentou and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
+                local hum = alvo.Character:FindFirstChild("Humanoid")
+                local hrp = alvo.Character.HumanoidRootPart
+
+                local t = tick() * PROP_MOVE_SPEED
+                local offsetY = math.sin(t) * PROP_MOVE_RANGE
+                moverProp(dados.prop, CFrame.new(hrp.Position + Vector3.new(0, offsetY, 0)))
+
+                if hum and hum.Sit then
+                    dados.sentou = true
+                else
+                    todosSentaram = false
+                end
+            end
+        end
+
+        if todosSentaram then
+            if conexaoMestre then conexaoMestre:Disconnect() end
+            task.wait(0.2)
+
+            -- Traz todos pra minha posição
+            local minhaPos = LocalPlayer.Character
+                and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                and LocalPlayer.Character.HumanoidRootPart.Position
+                or Vector3.new(0, 10, 0)
+
+            for alvo, dados in pairs(ativos) do
+                if dados.prop and dados.prop.Parent then
+                    moverProp(dados.prop, CFrame.new(minhaPos + Vector3.new(0, 3, 0)))
+                end
+            end
+
+            task.wait(0.8)
+            deletarTodosProps()
+            Notify("Props", "Bring All completo!", 2)
+        end
+    end)
+end
+
+-- ───────── BOTÕES ─────────
+
+UI.Button(Tabs.Troll, {
+    Name = "💀 Kill Prop (Alvo)",
+    Callback = function()
+        if not alvoPropSelecionado then
+            Notify("Props", "Selecione um alvo!", 2)
+            return
+        end
+        if not pegarPropMaker() then
+            Notify("Props", "Falha ao pegar PropMaker", 2)
+            return
+        end
+        selecionarProp()
+        Notify("Props", "Iniciando Kill Prop...", 2)
+        task.spawn(function()
+            executarKillProp(alvoPropSelecionado)
+        end)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🎣 Bring Prop (Trazer Alvo)",
+    Callback = function()
+        if not alvoPropSelecionado then
+            Notify("Props", "Selecione um alvo!", 2)
+            return
+        end
+        if not pegarPropMaker() then return end
+        selecionarProp()
+        Notify("Props", "Iniciando Bring Prop...", 2)
+        task.spawn(function()
+            executarBringProp(alvoPropSelecionado)
+        end)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "💀💀 Kill All (Todos os Jogadores)",
+    Callback = function()
+        if not pegarPropMaker() then return end
+        selecionarProp()
+        task.spawn(executarKillAll)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🎣🎣 Bring All (Trazer Todos)",
+    Callback = function()
+        if not pegarPropMaker() then return end
+        selecionarProp()
+        task.spawn(executarBringAll)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🧹 Limpar TODOS os Props",
+    Callback = function()
+        deletarTodosProps()
+        Notify("Props", "Props limpos!", 2)
+    end,
+})
 --------------------------------------------------------------------------------
 -- ABA OUTROS
 --------------------------------------------------------------------------------
