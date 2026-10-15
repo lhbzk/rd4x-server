@@ -2333,7 +2333,6 @@ local function selecionarProp(nome, categoria)
     task.wait(0.4)
 end
 
--- 3. Spawna o prop
 local function spawnarProp(posicao)
     local char = LocalPlayer.Character
     if not char then return false end
@@ -2344,14 +2343,53 @@ local function spawnarProp(posicao)
     local toolProp = propMaker:FindFirstChild("Tool_PropMake")
     if not toolProp then return false end
 
+    local camera = Workspace.CurrentCamera
+    if not camera then return false end
+
     local chao = Workspace:FindFirstChild("Model")
         and Workspace.Model:FindFirstChild("Street")
         and Workspace.Model.Street:FindFirstChild("Street")
         or Workspace
 
+    -- 🎯 PASSO 1: Manda a posição pro servidor
     pcall(function()
         toolProp:FireServer(chao, posicao)
     end)
+    task.wait(0.08)
+
+    -- 🎯 PASSO 2: Simula o clique automaticamente na tela
+    local posTela, onScreen = camera:WorldToViewportPoint(posicao)
+    local screenGui = game:GetService("CoreGui")
+    local screenSize = camera.ViewportSize
+
+    if not onScreen then
+        -- Se a posição tá fora da tela, calcula um fallback
+        posTela = Vector3.new(screenSize.X / 2, screenSize.Y / 2, 0)
+    end
+
+    -- Método 1: VirtualUser (funciona na maioria dos executores)
+    pcall(function()
+        local vu = game:GetService("VirtualUser")
+        vu:CaptureController()
+        vu:ClickButton1(Vector2.new(posTela.X, posTela.Y))
+    end)
+
+    -- Método 2: mouse1click (fallback)
+    task.wait(0.05)
+    pcall(function()
+        if mouse1click then mouse1click() end
+    end)
+
+    -- Método 3: mousemoveabs + mouse1click (fallback)
+    task.wait(0.05)
+    pcall(function()
+        if mousemoveabs and mouse1click then
+            mousemoveabs(posTela.X, posTela.Y)
+            task.wait(0.02)
+            mouse1click()
+        end
+    end)
+
     return true
 end
 
@@ -2412,13 +2450,20 @@ local function executarKillProp(nomeAlvo)
     local hrp = alvo.Character:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return false end
 
-    local antes = #encontrarMeusProps()
+    local antes = encontrarMeusProps()
+
+    -- 🎯 Spawna AUTOMATICAMENTE na posição do alvo (com clique simulado)
     spawnarProp(hrp.Position)
-    task.wait(0.4)
+    task.wait(0.6)
 
     local agora = encontrarMeusProps()
-    if #agora <= antes then return false end
+    if #agora <= antes then
+        Notify("Props", "Prop não spawnou", 2)
+        return false
+    end
+
     local prop = agora[#agora]
+    Notify("Props", "Prop spawnado! Perseguindo...", 2)
 
     local sentou = false
     local t0 = tick()
@@ -2447,7 +2492,7 @@ local function executarKillProp(nomeAlvo)
             moverProp(prop, CFrame.new(posFinal))
             task.wait(0.6)
             deletarUmProp()
-            Notify("Props", "Alvo enviado pro void!", 2)
+            Notify("Props", "💀 Alvo enviado pro void!", 2)
         end
     end)
     return true
@@ -2460,21 +2505,37 @@ local function executarBringProp(nomeAlvo)
     local hrp = alvo.Character:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return false end
 
-    local antes = #encontrarMeusProps()
-    spawnarProp(hrp.Position)
-    task.wait(0.4)
+    local antes = encontrarMeusProps()
 
-    local agora = encontrarMeusProps()
-    if #agora <= antes then return false end
-    local prop = agora[#agora]
+    Notify("Props", "👆 Clique na sua frente pra spawnar!", 4)
+    spawnarPropFacil()
+
+    -- Espera o prop aparecer
+    local prop = nil
+    local t0 = tick()
+    while tick() - t0 < 10 do
+        task.wait(0.3)
+        local agora = encontrarMeusProps()
+        if #agora > #antes then
+            prop = agora[#agora]
+            break
+        end
+    end
+
+    if not prop then
+        Notify("Props", "Prop não spawnou", 3)
+        return false
+    end
+
+    Notify("Props", "✅ Perseguindo alvo...", 2)
 
     local sentou = false
-    local t0 = tick()
+    local t1 = tick()
     local conexao
 
     conexao = RunService.Heartbeat:Connect(function()
         if sentou then return end
-        if tick() - t0 > TEMPO_MAX_SIT then
+        if tick() - t1 > TEMPO_MAX_SIT then
             if conexao then conexao:Disconnect() end
             return
         end
@@ -2496,9 +2557,10 @@ local function executarBringProp(nomeAlvo)
             moverProp(prop, CFrame.new(minhaPos + Vector3.new(0, 2, 0)))
             task.wait(0.6)
             deletarUmProp()
-            Notify("Props", "Alvo trazido até você!", 2)
+            Notify("Props", "🎣 Alvo trazido até você!", 2)
         end
     end)
+
     return true
 end
 
