@@ -291,7 +291,7 @@ local TitleHeader = Instance.new("TextLabel", Header)
 TitleHeader.Size = UDim2.new(0, 320, 0, 38)
 TitleHeader.Position = UDim2.new(0, 34, 0, 0)
 TitleHeader.BackgroundTransparency = 1
-TitleHeader.Text = "Rd4X Hub Oficial $ 「 Brookhaven RP 🇧🇷 」"
+TitleHeader.Text = "Rd4X Hub Oficial $ > Brookhaven RP 🇧🇷 < "
 TitleHeader.TextColor3 = COR_TEXTO
 TitleHeader.TextSize = 11
 TitleHeader.Font = Enum.Font.GothamBold
@@ -895,14 +895,18 @@ local Tabs = {
     Admin     = CreateTab("Admin"),
     Vip       = CreateTab("VIP"),
     Player    = CreateTab("Jogador"),
+    Skins = CreateTab("Skins"),
     Servidor  = CreateTab("Servidor"),
     Carros    = CreateTab("Veículo"),
     Casas     = CreateTab("Casa"),
+    SomAll = CreateTab("SomAll"),
     Musicas   = CreateTab("Música"),
     Troll     = CreateTab("Troll"),
     Outros    = CreateTab("Outros"),
     Protecao  = CreateTab("Proteção"),
     Scripts   = CreateTab("Scripts"),
+    Teleportes = CreateTab("Teleportes"),
+    Config = CreateTab("Config")
 }
 
 ShowTab("Informações")
