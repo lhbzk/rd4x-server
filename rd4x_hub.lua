@@ -2288,13 +2288,13 @@ task.spawn(function()
     -- ───── Header ─────
     local header = Instance.new("Frame", popup)
     header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundTransparency = 0.5
+    header.BackgroundTransparency = 0
     header.ZIndex = 1000
 
     local icone = Instance.new("TextLabel", header)
     icone.Size = UDim2.new(0, 24, 0, 24)
     icone.Position = UDim2.new(0, 12, 0, 8)
-    icone.BackgroundTransparency = 0.5
+    icone.BackgroundTransparency = 0
     icone.Text = "🔔"
     icone.TextSize = 16
     icone.ZIndex = 1000
@@ -2302,7 +2302,7 @@ task.spawn(function()
     local titulo = Instance.new("TextLabel", header)
     titulo.Size = UDim2.new(1, -80, 1, 0)
     titulo.Position = UDim2.new(0, 42, 0, 0)
-    titulo.BackgroundTransparency = 0.5
+    titulo.BackgroundTransparency = 0
     titulo.Text = "Update!"
     titulo.TextColor3 = COR_VERMELHO                 -- 👈 cor do texto (branco)
     titulo.TextSize = 13
@@ -2314,7 +2314,7 @@ task.spawn(function()
     local fechar = Instance.new("TextButton", header)
     fechar.Size = UDim2.new(0, 24, 0, 24)
     fechar.Position = UDim2.new(1, -32, 0, 8)
-    fechar.BackgroundTransparency = 0.5
+    fechar.BackgroundTransparency = 0
     fechar.Text = "✕"
     fechar.TextColor3 = COR_VERMELHO
     fechar.TextSize = 14
@@ -2341,7 +2341,7 @@ task.spawn(function()
     local conteudo = Instance.new("ScrollingFrame", popup)
     conteudo.Size = UDim2.new(1, -24, 1, -120)
     conteudo.Position = UDim2.new(0, 12, 0, 50)
-    conteudo.BackgroundTransparency = 0.5
+    conteudo.BackgroundTransparency = 0
     conteudo.BorderSizePixel = 0
     conteudo.ScrollBarThickness = 2
     conteudo.ScrollBarImageColor3 = COR_BORDA
@@ -2356,7 +2356,7 @@ task.spawn(function()
     local function addItem(texto)
         local item = Instance.new("TextLabel", conteudo)
         item.Size = UDim2.new(1, -4, 0, 20)
-        item.BackgroundTransparency = 0.5
+        item.BackgroundTransparency = 0
         item.Text = "• " .. texto
         item.TextColor3 = COR_VERMELHO
         item.TextSize = 10
@@ -2401,7 +2401,7 @@ task.spawn(function()
         TweenService:Create(popup, TweenInfo.new(0.3), {
             Size = UDim2.new(0, 0, 0, 0),
             Position = UDim2.new(0.5, 0, 0.5, 0),
-            BackgroundTransparency = 0.5
+            BackgroundTransparency = 0
         }):Play()
 
         for _, obj in ipairs(popup:GetDescendants()) do
