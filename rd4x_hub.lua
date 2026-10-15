@@ -2540,6 +2540,52 @@ local function executarBringProp(nomeAlvo)
     end)
     return true
 end
+-- ==========================================================
+-- 🔘 BOTÕES DA ABA PROPS
+-- ==========================================================
+
+UI.Button(Tabs.Troll, {
+    Name = "💀 Kill Prop (Alvo)",
+    Callback = function()
+        if not alvoPropSelecionado then 
+            Notify("Props", "Selecione um alvo!", 2) 
+            return 
+        end
+        if not pegarPropMaker() then 
+            Notify("Props", "Falha ao equipar caixa", 2) 
+            return 
+        end
+        selecionarProp()
+        Notify("Props", "Iniciando Kill Prop...", 2)
+        task.spawn(function() executarKillProp(alvoPropSelecionado) end)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🎣 Bring Prop (Trazer Alvo)",
+    Callback = function()
+        if not alvoPropSelecionado then 
+            Notify("Props", "Selecione um alvo!", 2) 
+            return 
+        end
+        if not pegarPropMaker() then 
+            Notify("Props", "Falha ao equipar caixa", 2) 
+            return 
+        end
+        selecionarProp()
+        Notify("Props", "Iniciando Bring Prop...", 2)
+        task.spawn(function() executarBringProp(alvoPropSelecionado) end)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🧹 Limpar TODOS os Props",
+    Callback = function()
+        deletarTodosProps()
+        Notify("Props", "Props limpos!", 2)
+    end,
+})
+
 
 --------------------------------------------------------------------------------
 -- ABA OUTROS
