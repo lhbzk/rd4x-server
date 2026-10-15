@@ -1174,7 +1174,78 @@ UI.Button(Tabs.Teleportes, {
         teleportar(-349, 66, -458, "Morro")
     end
 })
-
+UI.Button(Tabs.Teleportes, {
+    Name = "🌲 Floresta",
+    Callback = function()
+        teleportar(-254, 7, 1089, "Floresta")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🩳 Praia",
+    Callback = function()
+        teleportar(-231, 0, 742, "Praia")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🩳 Praia",
+    Callback = function()
+        teleportar(63, 4, 1477, "Praia2")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🐥 Fazenda",
+    Callback = function()
+        teleportar(-852, 3, -84, "Fazenda")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🐴 Celeiro",
+    Callback = function()
+        teleportar(-831, 3, -287, "Celeiro")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🛏️ Hotel",
+    Callback = function() 
+        teleportar(168, 4, 161, "Hotel")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "⛽ Posto",
+    Callback = function()
+        teleportar(157, 4, -301, "Posto")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🚁 Heli + Drone",
+    Callback = function()
+        teleportar(-695, 260, 790, "Drone")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🏠 Casa Abandonada",
+    Callback = function()
+        teleportar(1036, 6, 54, "Casa Abandonada")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "⛵ Iate ",
+    Callback = function()
+        teleportar(-128, 32, 850, "Iate")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "🔌 Energia",
+    Callback = function()
+        teleportar(228, 4, 813, "Energia")
+    end
+})
+UI.Button(Tabs.Teleportes, {
+    Name = "⛰️ Morro",
+    Callback = function()
+        teleportar(-349, 66, -458, "Morro")
+    end
+})
 --------------------------------------------------------------------------------
 -- ABA ADMIN
 --------------------------------------------------------------------------------
