@@ -2354,42 +2354,7 @@ local function pegarPropMaker()
 end
 
     -- 2️⃣ Pede o tool pro servidor
-    local toolRemote = RE:FindFirstChild("1Too1l")
-    if toolRemote then
-        pcall(function()
-            toolRemote:InvokeServer("PickingTools", "PropMaker")
-        end)
-    end
-    task.wait(0.3)
 
-    -- 3️⃣ Abre o menu de props
-    local clearRemote = RE:FindFirstChild("1Clea1rTool1s")
-    if clearRemote then
-        pcall(function()
-            clearRemote:FireServer("OpenPropMenu")
-        end)
-    end
-    task.wait(0.15)
-
-    -- 4️⃣ Clica no PropMaker pra EQUIPAR (essa é a chave!)
-    if telemetry then
-        pcall(function()
-            telemetry:FireServer("filterClick", {
-                itemType = "Tools",
-                name = "PropMaker",
-            })
-        end)
-    end
-    task.wait(0.3)
-
-    -- 5️⃣ Confirma que pegou
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    local char = LocalPlayer.Character
-    local propMaker = (backpack and backpack:FindFirstChild("PropMaker"))
-        or (char and char:FindFirstChild("PropMaker"))
-
-    return propMaker
-end
 
 local function selecionarProp(nome, categoria)
     local RE = ReplicatedStorage:FindFirstChild("RE")
