@@ -1702,7 +1702,64 @@ UI.Button(Tabs.Player, { Name = "Reset Personagem", Callback = function()
         LocalPlayer.Character.Humanoid.Health = 0
     end
 end})
+-- ==========================================================
+-- 📝 ROLEPLAY BIO
+-- ==========================================================
+local RPNameText = nil
 
+local function atualizarBioRemote()
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    RPNameText = RE and RE:FindFirstChild("1RPNam1eTex1t")
+end
+
+atualizarBioRemote()
+
+UI.Button(Tabs.Player, {
+    Name = "✨ Setar Bio: Welcome, " .. LocalPlayer.Name,
+    Callback = function()
+        atualizarBioRemote()
+        if RPNameText then
+            local texto = "Welcome, " .. LocalPlayer.Name
+            RPNameText:FireServer("RolePlayBio", texto)
+            Notify("Bio", texto, 3)
+        else
+            Notify("Erro", "Remote da Bio não encontrado", 3)
+        end
+    end
+})
+
+local bioCustom = ""
+
+UI.Input(Tabs.Player, {
+    Name = "Bio Personalizada",
+    CurrentValue = "",
+    PlaceholderText = "Digite seu texto...",
+    Callback = function(t) bioCustom = t end,
+})
+
+UI.Button(Tabs.Player, {
+    Name = "📝 Aplicar Bio Personalizada",
+    Callback = function()
+        atualizarBioRemote()
+        if RPNameText and bioCustom ~= "" then
+            RPNameText:FireServer("RolePlayBio", bioCustom)
+            Notify("Bio", "Aplicada: " .. bioCustom, 3)
+        else
+            Notify("Aviso", "Digite um texto primeiro", 2)
+        end
+    end
+})
+
+UI.Button(Tabs.Player, {
+    Name = "👻 Limpar Bio",
+    Callback = function()
+        atualizarBioRemote()
+        if RPNameText then
+            RPNameText:FireServer("RolePlayBio", "")
+            Notify("Bio", "Bio removida", 2)
+        end
+    end
+})
 --------------------------------------------------------------------------------
 -- ABA SERVIDOR
 --------------------------------------------------------------------------------
@@ -1984,324 +2041,183 @@ UI.Button(Tabs.Casas, { Name = "Desbanir auto", Callback = function()
     Notify("Casas", "Desbanido de todas as casas!", 2)
 end})
 
---------------------------------------------------------------------------------
--- ABA MÚSICAS
---------------------------------------------------------------------------------
-local idMusicaDigitado = ""
+-- ==========================================================
+-- 🎵 SONS VIA PlayerToolEvent (ToolMusicText)
+-- ==========================================================
+local PlayerToolEvent = nil
 
-local function tocarMusicaNaBoombox(id)
-    pcall(function()
-        local character = LocalPlayer.Character
-        local backpack = LocalPlayer.Backpack
-        local boombox = nil
-        if character then boombox = character:FindFirstChild("Boombox") or character:FindFirstChildOfClass("Tool") end
-        if not boombox and backpack then boombox = backpack:FindFirstChild("Boombox") or backpack:FindFirstChildOfClass("Tool") end
-        if boombox then
-            if boombox.Parent == backpack then boombox.Parent = character task.wait(0.1) end
-            local RE = ReplicatedStorage:FindFirstChild("RE")
-            local boomboxRemote = RE and (RE:FindFirstChild("1Boombox1") or RE:FindFirstChild("Boombox"))
-            if boomboxRemote then
-                boomboxRemote:FireServer(tonumber(id) or id)
-                Notify("Músicas", "Tocando ID: " .. tostring(id), 2)
-            end
+local function atualizarToolRemote()
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    PlayerToolEvent = RE and RE:FindFirstChild("PlayerToolEvent")
+end
+
+atualizarToolRemote()
+
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 Tocar Áudio Especial (84624301411909)",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "84624301411909")
+            Notify("Música", "Áudio especial tocando!", 3)
         else
-            Notify("Atenção", "Equipe a boombox!", 3)
+            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
         end
-    end)
-end
-
-UI.Input(Tabs.Musicas, { Name = "Digite o ID", CurrentValue = "", PlaceholderText = "Cole o ID...", Callback = function(id) idMusicaDigitado = id end })
-UI.Button(Tabs.Musicas, { Name = "Tocar música", Callback = function()
-    if idMusicaDigitado ~= "" then tocarMusicaNaBoombox(idMusicaDigitado) end
-end})
-
-local listaMusicasPadrao = {
-    {Name = "🎵 Phonk 1", ID = "1849767232"},
-    {Name = "🎵 Phonk 2", ID = "1424177890"},
-    {Name = "🎵 Funk 1", ID = "9047119231"},
-    {Name = "🎵 Funk 2", ID = "1423760458"},
-    {Name = "🎵 Hit Viral", ID = "1838927190"}
-}
-
-for _, mus in ipairs(listaMusicasPadrao) do
-    UI.Button(Tabs.Musicas, { Name = mus.Name, Callback = function() tocarMusicaNaBoombox(mus.ID) end })
-end
-
-UI.Button(Tabs.Musicas, { Name = "Parar música", Callback = function()
-    pcall(function()
-        local RE = ReplicatedStorage:FindFirstChild("RE")
-        local boomboxRemote = RE and (RE:FindFirstChild("1Boombox1") or RE:FindFirstChild("Boombox"))
-        if boomboxRemote then boomboxRemote:FireServer(0) end
-    end)
-    Notify("Músicas", "Música parada!", 2)
-end})
-
---------------------------------------------------------------------------------
--- ABA TROLL
---------------------------------------------------------------------------------
-local listaNomesTroll = {LocalPlayer.Name}
-for _, p in ipairs(Players:GetPlayers()) do
-    if p.Name ~= LocalPlayer.Name then table.insert(listaNomesTroll, p.Name) end
-end
-local alvoTrollSelecionado = LocalPlayer.Name
-local velocidadeGiroInput = 50
-local giroAtivoAlvo = false
-local conexaoGiro = nil
-
-local dropdownTrollList = UI.Dropdown(Tabs.Troll, { Name = "Lista de Alvos", Options = listaNomesTroll, CurrentOption = {LocalPlayer.Name}, Callback = function(Option) alvoTrollSelecionado = Option[1] end })
-
-UI.Button(Tabs.Troll, { Name = "🔄 Atualizar Lista de Alvos", Callback = function()
-    local lista = {}
-    for _, p in ipairs(Players:GetPlayers()) do table.insert(lista, p.Name) end
-    dropdownTrollList:Refresh(lista)
-    Notify("Troll", "Lista atualizada!", 2)
-end})
-
-UI.Input(Tabs.Troll, { Name = "Velocidade do Giro", CurrentValue = "50", PlaceholderText = "Ex: 50, 100...", Callback = function(val) velocidadeGiroInput = tonumber(val) or 50 end })
-
-UI.Button(Tabs.Troll, { Name = "🌀 Ativar Giro Infinito", Callback = function()
-    local alvo = Players:FindFirstChild(alvoTrollSelecionado)
-    if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
-        giroAtivoAlvo = true
-        if conexaoGiro then conexaoGiro:Disconnect() end
-        conexaoGiro = RunService.RenderStepped:Connect(function()
-            if not giroAtivoAlvo or not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
-                if conexaoGiro then conexaoGiro:Disconnect() end
-                return
-            end
-            local hrp = alvo.Character.HumanoidRootPart
-            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(velocidadeGiroInput), 0)
-        end)
-        Notify("Troll", "Giro infinito ativado!", 2)
     end
-end})
+})
 
-UI.Button(Tabs.Troll, { Name = "⏹️ Desativar Giro", Callback = function()
-    giroAtivoAlvo = false
-    if conexaoGiro then conexaoGiro:Disconnect() end
-    Notify("Troll", "Giro desativado.", 2)
-end})
+local idMusicaCustom = ""
+
+UI.Input(Tabs.Musicas, {
+    Name = "Outro Audio ID",
+    CurrentValue = "",
+    PlaceholderText = "Ex: 9048375035",
+    Callback = function(t) idMusicaCustom = t end,
+})
+
+UI.Button(Tabs.Musicas, {
+    Name = "▶️ Tocar Audio ID Personalizado",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent and idMusicaCustom ~= "" then
+            PlayerToolEvent:FireServer("ToolMusicText", idMusicaCustom)
+            Notify("Música", "ID " .. idMusicaCustom .. " tocando!", 3)
+        else
+            Notify("Aviso", "Digite um ID primeiro", 2)
+        end
+    end
+}) 
+
 -- ==========================================================
--- 🚌 TROLL: Ônibus Escolar Perseguidor
+-- 🚌 ÔNIBUS ESCOLAR — Spawn, Perseguição e Void
 -- ==========================================================
+local RE_BUS = ReplicatedStorage:FindFirstChild("RE")
+local CarRemote = RE_BUS and RE_BUS:FindFirstChild("1Ca1r")
 local busAtivo = false
 
+local function ativarCarRemote()
+    RE_BUS = ReplicatedStorage:FindFirstChild("RE")
+    CarRemote = RE_BUS and RE_BUS:FindFirstChild("1Ca1r")
+end
+
+local function encontrarOnibus()
+    local inicio = tick()
+    while tick() - inicio < 4 do
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") then
+                local nome = obj.Name:upper()
+                local meuNome = LocalPlayer.Name:upper()
+                if nome:find("BUS") or nome:find("SCHOOL") or nome:find(LocalPlayer.Name) or nome:find(meuNome) then
+                    local seat = obj:FindFirstChildOfClass("VehicleSeat") or obj:FindFirstChild("VehicleSeat", true)
+                    if seat then return obj, seat end
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+    return nil, nil
+end
+
 UI.Button(Tabs.Troll, {
-    Name = "🚌 Ônibus Escolar (Perseguir)",
+    Name = "🚌 Spawnar Ônibus Escolar",
+    Callback = function()
+        ativarCarRemote()
+        if CarRemote then
+            CarRemote:FireServer("PickingCar", "SchoolBus")
+            Notify("Veículo", "Ônibus escolar spawnado!", 3)
+        else
+            Notify("Erro", "Remote 1Ca1r não encontrado", 3)
+        end
+    end
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🌪️ Bus Fling & Tracking (Todas Direções)",
     Callback = function()
         if busAtivo then
             Notify("Troll", "Já tem ônibus ativo!", 2)
             return
         end
 
+        ativarCarRemote()
+        if not CarRemote then
+            Notify("Erro", "Remote 1Ca1r não encontrado", 3)
+            return
+        end
+
         local alvo = Players:FindFirstChild(alvoTrollSelecionado)
-        if not alvo or not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
-            Notify("Troll", "Alvo inválido!", 2)
+        if not alvo or not alvo.Character then
+            Notify("Troll", "Selecione uma vítima válida!", 3)
+            return
+        end
+
+        local rootAlvo = alvo.Character:FindFirstChild("HumanoidRootPart")
+        local humAlvo = alvo.Character:FindFirstChildOfClass("Humanoid")
+        if not rootAlvo or not humAlvo then
+            Notify("Troll", "Alvo sem personagem!", 2)
             return
         end
 
         busAtivo = true
-        Notify("Troll", "Spawnando ônibus...", 2)
 
-        -- Mapeia o Workspace antes de spawnar
-        local antes = {}
-        for _, obj in ipairs(Workspace:GetChildren()) do
-            antes[obj] = true
-        end
+        -- Spawn do ônibus
+        CarRemote:FireServer("PickingCar", "SchoolBus")
+        Notify("Troll", "Buscando ônibus...", 3)
 
-        -- Spawna o ônibus
-        pcall(function()
-            local args = {[1] = "PickingCar", [2] = "SchoolBus"}
-            game:GetService("ReplicatedStorage").RE["1Ca1r"]:FireServer(table.unpack(args))
-        end)
-
-        -- Espera o ônibus aparecer (max 5s)
-        local onibus = nil
-        local espera = tick()
-        while tick() - espera < 5 do
-            task.wait(0.1)
-            for _, obj in ipairs(Workspace:GetChildren()) do
-                if not antes[obj] and obj:IsA("Model") then
-                    for _, d in ipairs(obj:GetDescendants()) do
-                        if d:IsA("VehicleSeat") or d:IsA("Seat") then
-                            onibus = obj
-                            break
-                        end
-                    end
-                end
-                if onibus then break end
-            end
-            if onibus then break end
-        end
-
-        if not onibus then
-            Notify("Troll", "Ônibus não apareceu!", 3)
-            busAtivo = false
-            return
-        end
-
-        -- Pega um BasePart pra referência
-        local primary = onibus.PrimaryPart
-        if not primary then
-            for _, d in ipairs(onibus:GetDescendants()) do
-                if d:IsA("BasePart") then
-                    primary = d
-                    onibus.PrimaryPart = d
-                    break
-                end
-            end
-        end
-
-        if not primary then
-            Notify("Troll", "Ônibus sem PrimaryPart!", 2)
-            busAtivo = false
-            return
-        end
-
-        -- Garante que o ônibus é controlável
-        -- Garante que o ônibus é controlável
-pcall(function()
-    for _, d in ipairs(onibus:GetDescendants()) do
-        if d:IsA("BasePart") then
-            d.Anchored = false
-            d.CanCollide = true
-            d:SetNetworkOwner(nil)
-        end
-    end
-end)
-
--- 🚗 ENTRA AUTOMATICAMENTE COMO MOTORISTA
-task.spawn(function()
-    task.wait(0.2)
-    if not LocalPlayer.Character then return end
-    local meuHum = LocalPlayer.Character:FindFirstChild("Humanoid")
-    local meuHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not meuHum or not meuHrp then return end
-
-    -- Procura a cadeira do motorista
-    local cadeiraMotorista = nil
-    for _, d in ipairs(onibus:GetDescendants()) do
-        if d:IsA("VehicleSeat") then
-            -- Prioriza a cadeira marcada como motorista
-            if d.Name:lower():find("driver") or d.Name:lower():find("motorista") then
-                cadeiraMotorista = d
-                break
-            elseif not cadeiraMotorista then
-                cadeiraMotorista = d  -- fallback: primeira cadeira
-            end
-        end
-    end
-
-    if cadeiraMotorista then
-        -- Move o personagem pra cima da cadeira
-        meuHrp.CFrame = cadeiraMotorista.CFrame + Vector3.new(0, 3, 0)
-        task.wait(0.1)
-
-        -- Força sentar
-        pcall(function()
-            cadeiraMotorista:Sit(meuHum)
-        end)
-
-        -- Garantia extra
-        task.wait(0.1)
-        if not meuHum.Sit then
-            pcall(function()
-                meuHum.Sit = true
-            end)
-        end
-
-        Notify("Troll", "Você é o motorista! 🚌", 2)
-    end
-end)
-
-Notify("Troll", "Ônibus perseguindo! 🚌", 2)
-
-        -- Execução em paralelo
         task.spawn(function()
-            local tentativas = 0
-            local maxTentativas = 600  -- ~30s
+            local onibus, seatMotorista = encontrarOnibus()
+            local myChar = LocalPlayer.Character
+            local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-            -- FASE 1: Persegue + gira
-            while busAtivo and tentativas < maxTentativas do
-                tentativas = tentativas + 1
-
-                if not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
-                    break
-                end
-
-                local hrpAlvo = alvo.Character.HumanoidRootPart
-                local posAlvo = hrpAlvo.Position
-                local posOnibus = primary.Position
-
-                -- Move em direção ao alvo
-                local direcao = (Vector3.new(posAlvo.X, posOnibus.Y, posAlvo.Z) - posOnibus).Unit
-                local novaPos = posOnibus + direcao * 3
-                novaPos = Vector3.new(novaPos.X, math.max(novaPos.Y, posAlvo.Y + 4), novaPos.Z)
-
-                -- Gira em todas as direções (aleatório)
-                local rotacao = CFrame.Angles(
-                    math.rad(math.random(-15, 15)),
-                    math.rad(math.random(0, 360)),
-                    math.rad(math.random(-15, 15))
-                )
-
-                pcall(function()
-                    onibus:PivotTo(CFrame.new(novaPos) * rotacao)
-                end)
-
-                -- Verifica se alvo sentou
-                local humanoide = alvo.Character:FindFirstChild("Humanoid")
-                if humanoide and humanoide.Sit then
-                    Notify("Troll", "Alvo sentou! Afundando...", 2)
-                    break
-                end
-
-                task.wait(0.05)
+            if not onibus or not seatMotorista or not myHum then
+                Notify("Erro", "Ônibus não localizado!", 4)
+                busAtivo = false
+                return
             end
 
-            -- FASE 2: Afunda pra Y = -300
-            if busAtivo then
-                task.wait(0.3)
+            -- Entra como motorista
+            task.wait(0.2)
+            pcall(function() seatMotorista:Sit(myHum) end)
+            task.wait(0.1)
 
-                local posAfundar = Vector3.new(primary.Position.X, -300, primary.Position.Z)
-                pcall(function()
-                    onibus:PivotTo(CFrame.new(posAfundar))
-                end)
+            Notify("Troll", "Perseguindo em todas as direções!", 3)
 
-                task.wait(0.4)
+            local girando = true
+            local conexaoRender
 
-                -- Remove propriedade de sentar das cadeiras
-                for _, d in ipairs(onibus:GetDescendants()) do
-                    if d:IsA("VehicleSeat") or d:IsA("Seat") then
-                        pcall(function()
-                            d.Disabled = true
-                            d.CanCollide = false
-                        end)
-                        for _, weld in ipairs(d:GetChildren()) do
-                            if weld:IsA("Weld") or weld:IsA("WeldConstraint") then
-                                pcall(function() weld:Destroy() end)
-                            end
-                        end
-                    end
+            conexaoRender = RunService.RenderStepped:Connect(function()
+                if girando and rootAlvo and rootAlvo.Parent and onibus and onibus.Parent then
+                    local t = tick() * 25
+                    local rotX = math.rad(t * 50 % 360)
+                    local rotY = math.rad(t * 80 % 360)
+                    local rotZ = math.rad(t * 30 % 360)
+                    onibus:PivotTo(rootAlvo.CFrame * CFrame.Angles(rotX, rotY, rotZ))
+                else
+                    if conexaoRender then conexaoRender:Disconnect() end
                 end
+            end)
 
-                task.wait(0.5)
+            local conexaoSentou
+            conexaoSentou = humAlvo.Seated:Connect(function(isSeated, seat)
+                if isSeated and seat and seat:IsDescendantOf(onibus) then
+                    girando = false
+                    if conexaoRender then conexaoRender:Disconnect() end
+                    Notify("Troll", "Alvo capturado! Enviando pro void...", 3)
 
-                -- FASE 3: Traz de volta à superfície
-                local ySuperficie = posAlvo.Y + 50
-                if alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
-                    ySuperficie = alvo.Character.HumanoidRootPart.Position.Y + 50
+                    task.wait(0.05)
+                    onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -5000, rootAlvo.Position.Z))
+
+                    if conexaoSentou then conexaoSentou:Disconnect() end
+                    busAtivo = false
                 end
+            end)
 
-                local posVoltar = Vector3.new(primary.Position.X, ySuperficie, primary.Position.Z)
-                pcall(function()
-                    onibus:PivotTo(CFrame.new(posVoltar))
-                end)
-
-                Notify("Troll", "Ônibus voltou! 🚌", 3)
-            end
-
-            busAtivo = false
+            task.delay(30, function()
+                girando = false
+                busAtivo = false
+                if conexaoRender then conexaoRender:Disconnect() end
+                if conexaoSentou then conexaoSentou:Disconnect() end
+            end)
         end)
     end
 })
