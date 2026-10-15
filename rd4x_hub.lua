@@ -1021,7 +1021,7 @@ padCH.PaddingRight = UDim.new(0, 8)
 local TitleHex = Instance.new("TextLabel", CardHexagon)
 TitleHex.Size = UDim2.new(1, -10, 0, 16)
 TitleHex.BackgroundTransparency = 1
-TitleHex.Text = "Rd4X Hub for Brookhaven 🏡RP"
+TitleHex.Text = "Rd4X Hub For Brookhaven RP"
 TitleHex.TextColor3 = COR_TEXTO
 TitleHex.TextSize = 11
 TitleHex.Font = Enum.Font.GothamBold
@@ -1032,7 +1032,7 @@ local DescHex = Instance.new("TextLabel", CardHexagon)
 DescHex.Size = UDim2.new(1, -10, 0, 32)
 DescHex.Position = UDim2.new(0, 0, 0, 18)
 DescHex.BackgroundTransparency = 1
-DescHex.Text = "Rd4X, Multilingual and multifunctional Client, offering a variety of options for you ^<^1>^."
+DescHex.Text = "Está versão é a 1.0. Você pode encontrar falhas."
 DescHex.TextColor3 = COR_TEXTO_CINZA
 DescHex.TextSize = 9
 DescHex.Font = Enum.Font.Gotham
@@ -1059,7 +1059,7 @@ padCR.PaddingRight = UDim.new(0, 8)
 local TitleRelease = Instance.new("TextLabel", CardRelease)
 TitleRelease.Size = UDim2.new(1, -10, 0, 16)
 TitleRelease.BackgroundTransparency = 1
-TitleRelease.Text = "New Release (🔥 Mistake Upd. V):"
+TitleRelease.Text = "[Lançamento]🔥 Versão: 1.0:"
 TitleRelease.TextColor3 = COR_TEXTO
 TitleRelease.TextSize = 11
 TitleRelease.Font = Enum.Font.GothamBold
@@ -1070,7 +1070,7 @@ local DescRelease = Instance.new("TextLabel", CardRelease)
 DescRelease.Size = UDim2.new(1, -10, 0, 94)
 DescRelease.Position = UDim2.new(0, 0, 0, 20)
 DescRelease.BackgroundTransparency = 1
-DescRelease.Text = "News: Improved performance, Anti-Fling aprimorado, Fly gui, Fly car, Ban & Kick System, Cam Player, Backrooms, Ragdoll, Sentar na cabeça, Troll Giro, Anti-Lag, Noclip, ESP, Proteções e muito mais."
+DescRelease.Text = "Acessando o Discord você pode obter mais informações, mas a compra do Admin só serão liberadas ao atingir 1K de Execuções.."
 DescRelease.TextColor3 = COR_TEXTO_CINZA
 DescRelease.TextSize = 9
 DescRelease.Font = Enum.Font.Gotham
@@ -1108,7 +1108,7 @@ local DescCI2 = Instance.new("TextLabel", CardInfo2)
 DescCI2.Size = UDim2.new(1, -10, 0, 32)
 DescCI2.Position = UDim2.new(0, 0, 0, 18)
 DescCI2.BackgroundTransparency = 1
-DescCI2.Text = "Owner/Dev: J. Epstein\nColabs: Rd4X Team Oficial"
+DescCI2.Text = "Dev / Owner = J. Epstein/nEquipe = Rd4X Team oficial"
 DescCI2.TextColor3 = COR_TEXTO_CINZA
 DescCI2.TextSize = 9
 DescCI2.Font = Enum.Font.Gotham
@@ -1142,6 +1142,38 @@ end)
 BotaoReconectar.MouseButton1Click:Connect(function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
 end)
+-- ==========================================================
+-- 🌍 ABA TELEPORTES
+-- ==========================================================
+local function teleportar(x, y, z, nomeLocal)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x, y, z)
+        Notify("🌍 Teleporte", "Você foi para: " .. nomeLocal, 2)
+    else
+        Notify("⚠️ Aviso", "Personagem não carregado", 2)
+    end
+end
+
+UI.Button(Tabs.Teleportes, {
+    Name = "🏛️ Praça",
+    Callback = function()
+        teleportar(-26, 7, 1, "Praça")
+    end
+})
+
+UI.Button(Tabs.Teleportes, {
+    Name = "🏥 Hospital",
+    Callback = function()
+        teleportar(-317, 5, 21, "Hospital")
+    end
+})
+
+UI.Button(Tabs.Teleportes, {
+    Name = "⛰️ Morro",
+    Callback = function()
+        teleportar(-349, 66, -458, "Morro")
+    end
+})
 
 --------------------------------------------------------------------------------
 -- ABA ADMIN
