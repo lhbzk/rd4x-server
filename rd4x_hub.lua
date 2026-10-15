@@ -2276,17 +2276,82 @@ local function pegarPropMaker()
     local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if not RE or not Remotes then return nil end
 
-    -- 1️⃣ Abre a mochila (HUD)
-    local telemetry = Remotes:FindFirstChild("TelemetryClientInteraction")
-    if telemetry then
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    if not char or not hum then return nil end
+
+    -- 🎯 PASSO 1: Já tem o tool equipado? Usa direto!
+    local propMaker = char:FindFirstChild("PropMaker")
+
+    if propMaker then
+        print("✅ PropMaker já equipado, usando ele")
+    else
+        -- 🎯 PASSO 2: Não tem equipado, pega do backpack
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        propMaker = backpack and backpack:FindFirstChild("PropMaker")
+
+        if propMaker then
+            print("📦 PropMaker na mochila, equipando...")
+            pcall(function()
+                hum:EquipTool(propMaker)
+            end)
+            task.wait(0.3)
+        else
+            -- 🎯 PASSO 3: Não tem em lugar nenhum, pede pro servidor
+            print("🆕 Pedindo PropMaker pro servidor...")
+
+            -- Fecha mochila primeiro
+            local telemetry = Remotes:FindFirstChild("TelemetryClientInteraction")
+            if telemetry then
+                pcall(function()
+                    telemetry:FireServer("uiInteraction", {
+                        buttonName = "BackpackHudButton",
+                        inVehicle = false,
+                    })
+                end)
+                task.wait(0.2)
+            end
+
+            -- Pede o tool
+            local toolRemote = RE:FindFirstChild("1Too1l")
+            if toolRemote then
+                pcall(function()
+                    toolRemote:InvokeServer("PickingTools", "PropMaker")
+                end)
+            end
+            task.wait(0.4)
+
+            -- Confere de novo
+            propMaker = char:FindFirstChild("PropMaker")
+                or (LocalPlayer:FindFirstChild("Backpack") and LocalPlayer.Backpack:FindFirstChild("PropMaker"))
+
+            if propMaker and propMaker.Parent ~= char then
+                pcall(function()
+                    hum:EquipTool(propMaker)
+                end)
+                task.wait(0.3)
+            end
+        end
+    end
+
+    -- 🎯 Confirma que tá equipado
+    propMaker = char:FindFirstChild("PropMaker")
+    if not propMaker then
+        Notify("Props", "Não conseguiu equipar PropMaker", 2)
+        return nil
+    end
+
+    -- 🎯 SEMPRE abre o menu de props (pra garantir que tá pronto)
+    local clearRemote = RE:FindFirstChild("1Clea1rTool1s")
+    if clearRemote then
         pcall(function()
-            telemetry:FireServer("uiInteraction", {
-                buttonName = "BackpackHudButton",
-                inVehicle = false,
-            })
+            clearRemote:FireServer("OpenPropMenu")
         end)
     end
-    task.wait(0.15)
+    task.wait(0.25)
+
+    return propMaker
+end
 
     -- 2️⃣ Pede o tool pro servidor
     local toolRemote = RE:FindFirstChild("1Too1l")
