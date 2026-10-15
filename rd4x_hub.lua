@@ -2337,7 +2337,6 @@ UI.Button(Tabs.Musicas, {
         atualizarToolRemote()
         if PlayerToolEvent then
             PlayerToolEvent:FireServer("ToolMusicText", "103811087853875")
-            Notify("Música", "piranha tocando!", 3)
         end
     end
 })
@@ -2348,40 +2347,160 @@ UI.Button(Tabs.Musicas, {
         atualizarToolRemote()
         if PlayerToolEvent then
             PlayerToolEvent:FireServer("ToolMusicText", "126719632721905")
-            Notify("Música", "os menor tocando!", 3)
-            
+            end
+        end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 vai caindo com a bct",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "74967642581893")
         end
     end
 })
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 facada",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "81730477878065")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 Tipo nino",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "140336018782383")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 lacs",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "121544291272731")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 Funk",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "74206017407052")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 onda do birimbau",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "90728144562197")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 piseiro bahiano",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "111425053457342")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 cheiro",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "102430799050444")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 afrozada",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "116257708415048")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 sequência de papapey",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "127060465281063")
+        end
+    end
+})
+
 
 --------------------------------------------------------------------------------
 -- 🪗 CATEGORIA: FORRÓ
 --------------------------------------------------------------------------------
 UI.Button(Tabs.Musicas, {
-    Name = "🪗 Forró 1 - (Cole o Nome Aqui)",
+    Name = "🪗 uma botadinha",
     Callback = function()
         atualizarToolRemote()
         if PlayerToolEvent then
-            PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
-            Notify("Música", "Forró 1 tocando!", 3)
-        else
-            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
+            PlayerToolEvent:FireServer("ToolMusicText", "84624301411909")
         end
     end
 })
 
 UI.Button(Tabs.Musicas, {
-    Name = "🪗 Forró 2 - (Cole o Nome Aqui)",
+    Name = "🪗 eu me apaixonei",
     Callback = function()
         atualizarToolRemote()
         if PlayerToolEvent then
-            PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
-            Notify("Música", "Forró 2 tocando!", 3)
-        else
-            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
+            PlayerToolEvent:FireServer("ToolMusicText", "139414982330352")
         end
     end
 })
+UI.Button(Tabs.Musicas, {
+    Name = "🪗 Pisada xl",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "70508008395270")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🪗 notificação preferida",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "90137280531474")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🪗 só fé",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "139128878060651")
+        end
+    end
+})
+UI.Button(Tabs.Musicas, {
+    Name = "🪗 desça daí seu corno",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "1197388789221996")
+        end
+    end
+})
+
 
 --------------------------------------------------------------------------------
 -- 🏎️ CATEGORIA: PHONK
@@ -2392,9 +2511,6 @@ UI.Button(Tabs.Musicas, {
         atualizarToolRemote()
         if PlayerToolEvent then
             PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
-            Notify("Música", "Phonk 1 tocando!", 3)
-        else
-            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
         end
     end
 })
@@ -2405,9 +2521,6 @@ UI.Button(Tabs.Musicas, {
         atualizarToolRemote()
         if PlayerToolEvent then
             PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
-            Notify("Música", "Phonk 2 tocando!", 3)
-        else
-            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
         end
     end
 })
