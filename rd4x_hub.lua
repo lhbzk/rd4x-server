@@ -2081,7 +2081,193 @@ UI.Button(Tabs.Troll, { Name = "⏹️ Desativar Giro", Callback = function()
     if conexaoGiro then conexaoGiro:Disconnect() end
     Notify("Troll", "Giro desativado.", 2)
 end})
+-- ==========================================================
+-- 🚌 TROLL: Ônibus Escolar Perseguidor
+-- ==========================================================
+local busAtivo = false
 
+UI.Button(Tabs.Troll, {
+    Name = "🚌 Ônibus Escolar (Perseguir)",
+    Callback = function()
+        if busAtivo then
+            Notify("Troll", "Já tem ônibus ativo!", 2)
+            return
+        end
+
+        local alvo = Players:FindFirstChild(alvoTrollSelecionado)
+        if not alvo or not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
+            Notify("Troll", "Alvo inválido!", 2)
+            return
+        end
+
+        busAtivo = true
+        Notify("Troll", "Spawnando ônibus...", 2)
+
+        -- Mapeia o Workspace antes de spawnar
+        local antes = {}
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            antes[obj] = true
+        end
+
+        -- Spawna o ônibus
+        pcall(function()
+            local args = {[1] = "PickingCar", [2] = "SchoolBus"}
+            game:GetService("ReplicatedStorage").RE["1Ca1r"]:FireServer(table.unpack(args))
+        end)
+
+        -- Espera o ônibus aparecer (max 5s)
+        local onibus = nil
+        local espera = tick()
+        while tick() - espera < 5 do
+            task.wait(0.1)
+            for _, obj in ipairs(Workspace:GetChildren()) do
+                if not antes[obj] and obj:IsA("Model") then
+                    for _, d in ipairs(obj:GetDescendants()) do
+                        if d:IsA("VehicleSeat") or d:IsA("Seat") then
+                            onibus = obj
+                            break
+                        end
+                    end
+                end
+                if onibus then break end
+            end
+            if onibus then break end
+        end
+
+        if not onibus then
+            Notify("Troll", "Ônibus não apareceu!", 3)
+            busAtivo = false
+            return
+        end
+
+        -- Pega um BasePart pra referência
+        local primary = onibus.PrimaryPart
+        if not primary then
+            for _, d in ipairs(onibus:GetDescendants()) do
+                if d:IsA("BasePart") then
+                    primary = d
+                    onibus.PrimaryPart = d
+                    break
+                end
+            end
+        end
+
+        if not primary then
+            Notify("Troll", "Ônibus sem PrimaryPart!", 2)
+            busAtivo = false
+            return
+        end
+
+        -- Garante que o ônibus é controlável
+        pcall(function()
+            for _, d in ipairs(onibus:GetDescendants()) do
+                if d:IsA("BasePart") then
+                    d.Anchored = false
+                    d.CanCollide = true
+                    d:SetNetworkOwner(nil)
+                end
+            end
+        end)
+
+        Notify("Troll", "Ônibus perseguindo! 🚌", 2)
+
+        -- Execução em paralelo
+        task.spawn(function()
+            local tentativas = 0
+            local maxTentativas = 600  -- ~30s
+
+            -- FASE 1: Persegue + gira
+            while busAtivo and tentativas < maxTentativas do
+                tentativas = tentativas + 1
+
+                if not alvo.Character or not alvo.Character:FindFirstChild("HumanoidRootPart") then
+                    break
+                end
+
+                local hrpAlvo = alvo.Character.HumanoidRootPart
+                local posAlvo = hrpAlvo.Position
+                local posOnibus = primary.Position
+
+                -- Move em direção ao alvo
+                local direcao = (Vector3.new(posAlvo.X, posOnibus.Y, posAlvo.Z) - posOnibus).Unit
+                local novaPos = posOnibus + direcao * 3
+                novaPos = Vector3.new(novaPos.X, math.max(novaPos.Y, posAlvo.Y + 4), novaPos.Z)
+
+                -- Gira em todas as direções (aleatório)
+                local rotacao = CFrame.Angles(
+                    math.rad(math.random(-15, 15)),
+                    math.rad(math.random(0, 360)),
+                    math.rad(math.random(-15, 15))
+                )
+
+                pcall(function()
+                    onibus:PivotTo(CFrame.new(novaPos) * rotacao)
+                end)
+
+                -- Verifica se alvo sentou
+                local humanoide = alvo.Character:FindFirstChild("Humanoid")
+                if humanoide and humanoide.Sit then
+                    Notify("Troll", "Alvo sentou! Afundando...", 2)
+                    break
+                end
+
+                task.wait(0.05)
+            end
+
+            -- FASE 2: Afunda pra Y = -300
+            if busAtivo then
+                task.wait(0.3)
+
+                local posAfundar = Vector3.new(primary.Position.X, -300, primary.Position.Z)
+                pcall(function()
+                    onibus:PivotTo(CFrame.new(posAfundar))
+                end)
+
+                task.wait(0.4)
+
+                -- Remove propriedade de sentar das cadeiras
+                for _, d in ipairs(onibus:GetDescendants()) do
+                    if d:IsA("VehicleSeat") or d:IsA("Seat") then
+                        pcall(function()
+                            d.Disabled = true
+                            d.CanCollide = false
+                        end)
+                        for _, weld in ipairs(d:GetChildren()) do
+                            if weld:IsA("Weld") or weld:IsA("WeldConstraint") then
+                                pcall(function() weld:Destroy() end)
+                            end
+                        end
+                    end
+                end
+
+                task.wait(0.5)
+
+                -- FASE 3: Traz de volta à superfície
+                local ySuperficie = posAlvo.Y + 50
+                if alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
+                    ySuperficie = alvo.Character.HumanoidRootPart.Position.Y + 50
+                end
+
+                local posVoltar = Vector3.new(primary.Position.X, ySuperficie, primary.Position.Z)
+                pcall(function()
+                    onibus:PivotTo(CFrame.new(posVoltar))
+                end)
+
+                Notify("Troll", "Ônibus voltou! 🚌", 3)
+            end
+
+            busAtivo = false
+        end)
+    end
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "⏹️ Parar Ônibus",
+    Callback = function()
+        busAtivo = false
+        Notify("Troll", "Ônibus parado", 2)
+    end
+})
 --------------------------------------------------------------------------------
 -- ABA OUTROS
 --------------------------------------------------------------------------------
