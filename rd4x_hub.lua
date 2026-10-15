@@ -2289,7 +2289,7 @@ task.spawn(function()
     local header = Instance.new("Frame", popup)
     header.Size = UDim2.new(1, 0, 0, 40)
     header.BackgroundTransparency = 1
-    header.ZIndex = 5
+    header.ZIndex = 1000
 
     local icone = Instance.new("TextLabel", header)
     icone.Size = UDim2.new(0, 24, 0, 24)
@@ -2297,18 +2297,18 @@ task.spawn(function()
     icone.BackgroundTransparency = 1
     icone.Text = "🔔"
     icone.TextSize = 16
-    icone.ZIndex = 6
+    icone.ZIndex = 1000
 
     local titulo = Instance.new("TextLabel", header)
     titulo.Size = UDim2.new(1, -80, 1, 0)
     titulo.Position = UDim2.new(0, 42, 0, 0)
     titulo.BackgroundTransparency = 1
     titulo.Text = "Update!"
-    titulo.TextColor3 = COR_TEXTO                 -- 👈 cor do texto (branco)
+    titulo.TextColor3 = COR_VERMELHO                 -- 👈 cor do texto (branco)
     titulo.TextSize = 13
     titulo.Font = Enum.Font.GothamBold
     titulo.TextXAlignment = Enum.TextXAlignment.Left
-    titulo.ZIndex = 6
+    titulo.ZIndex = 1000
 
     -- Botão fechar (X)
     local fechar = Instance.new("TextButton", header)
@@ -2316,17 +2316,17 @@ task.spawn(function()
     fechar.Position = UDim2.new(1, -32, 0, 8)
     fechar.BackgroundTransparency = 1
     fechar.Text = "✕"
-    fechar.TextColor3 = COR_TEXTO_CINZA
+    fechar.TextColor3 = COR_VERMELHO
     fechar.TextSize = 14
     fechar.Font = Enum.Font.GothamBold
-    fechar.ZIndex = 6
+    fechar.ZIndex = 1000
     fechar.AutoButtonColor = false
 
     fechar.MouseEnter:Connect(function()
-        fechar.TextColor3 = COR_TEXTO
+        fechar.TextColor3 = COR_VERMELHO
     end)
     fechar.MouseLeave:Connect(function()
-        fechar.TextColor3 = COR_TEXTO_CINZA
+        fechar.TextColor3 = COR_VERMELHO
     end)
 
     -- Linha separadora
@@ -2335,7 +2335,7 @@ task.spawn(function()
     separador.Position = UDim2.new(0, 12, 0, 42)
     separador.BackgroundColor3 = COR_BORDA
     separador.BorderSizePixel = 0
-    separador.ZIndex = 5
+    separador.ZIndex = 1000
 
     -- Área do conteúdo
     local conteudo = Instance.new("ScrollingFrame", popup)
@@ -2347,7 +2347,7 @@ task.spawn(function()
     conteudo.ScrollBarImageColor3 = COR_BORDA
     conteudo.CanvasSize = UDim2.new(0, 0, 0, 0)
     conteudo.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    conteudo.ZIndex = 5
+    conteudo.ZIndex = 1000
 
     local layoutConteudo = Instance.new("UIListLayout", conteudo)
     layoutConteudo.Padding = UDim.new(0, 6)
@@ -2358,12 +2358,12 @@ task.spawn(function()
         item.Size = UDim2.new(1, -4, 0, 20)
         item.BackgroundTransparency = 1
         item.Text = "• " .. texto
-        item.TextColor3 = COR_TEXTO
+        item.TextColor3 = COR_VERMELHO
         item.TextSize = 10
         item.Font = Enum.Font.Gotham
         item.TextXAlignment = Enum.TextXAlignment.Left
         item.TextWrapped = true
-        item.ZIndex = 6
+        item.ZIndex = 1000
     end
 
     -- 👇 EDITE AQUI AS NOVIDADES
@@ -2379,11 +2379,11 @@ task.spawn(function()
     botaoOk.BackgroundTransparency = TRANSP_CARDS
     botaoOk.BorderSizePixel = 0
     botaoOk.Text = "Entendi!"
-    botaoOk.TextColor3 = COR_TEXTO
+    botaoOk.TextColor3 = COR_VERMELHO
     botaoOk.TextSize = 11
     botaoOk.Font = Enum.Font.GothamBold
     botaoOk.AutoButtonColor = false
-    botaoOk.ZIndex = 6
+    botaoOk.ZIndex = 1000
 
     local cBtn = Instance.new("UICorner", botaoOk)
     cBtn.CornerRadius = UDim.new(0, 6)
