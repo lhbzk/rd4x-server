@@ -2479,3 +2479,29 @@ UI.Button(Tabs.Player, {
         end)
     end
 })
+-- ==========================================================
+-- 📝 AUTO-BIO: Welcome, NomeDoJogador (aplica 1x ao executar)
+-- ==========================================================
+task.spawn(function()
+    task.wait(2)   -- espera o hub carregar
+
+    local RE = ReplicatedStorage:FindFirstChild("RE")
+    local RPNameText = RE and RE:FindFirstChild("1RPNam1eTex1t")
+
+    if not RPNameText then
+        -- tenta de novo depois (alguns servidores demoram pra carregar o RE)
+        task.wait(2)
+        RE = ReplicatedStorage:FindFirstChild("RE")
+        RPNameText = RE and RE:FindFirstChild("1RPNam1eTex1t")
+    end
+
+    if RPNameText then
+        local textoBio = "Welcome, " .. LocalPlayer.Name
+        pcall(function()
+            RPNameText:FireServer("RolePlayBio", textoBio)
+        end)
+        print("✅ Bio aplicada automaticamente: " .. textoBio)
+    else
+        warn("⚠️ Remote da Bio não encontrado")
+    end
+end)
