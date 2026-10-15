@@ -2213,27 +2213,30 @@ end
 -- ==========================================================
 -- 🔔 POPUP DE ATUALIZAÇÃO (com bolhas + cor do hub)
 -- ==========================================================
+-- ==========================================================
+-- 🔔 POPUP DE ATUALIZAÇÃO (DESIGN REFINADO E LIMPO)
+-- ==========================================================
 task.spawn(function()
     task.wait(1)
 
     -- Container principal
     local popup = Instance.new("Frame", ScreenGui)
     popup.Name = "Rd4X_PopupAtualizacao"
-    popup.Size = UDim2.new(0, 340, 0, 230)
-    popup.Position = UDim2.new(0.5, -170, 0.5, -115)
-    popup.BackgroundColor3 = COR_FUNDO               -- 👈 cor do hub
-    popup.BackgroundTransparency = TRANSP_FUNDO      -- 👈 transparência do hub
+    popup.Size = UDim2.new(0, 360, 0, 240)
+    popup.Position = UDim2.new(0.5, -180, 0.5, -120)
+    popup.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+    popup.BackgroundTransparency = 0.1
     popup.BorderSizePixel = 0
     popup.ClipsDescendants = true
     popup.ZIndex = 10000
 
     local cPopup = Instance.new("UICorner", popup)
-    cPopup.CornerRadius = UDim.new(0, 10)
+    cPopup.CornerRadius = UDim.new(0, 12)
 
     local sPopup = Instance.new("UIStroke", popup)
-    sPopup.Color = COR_BORDA                         -- 👈 borda do hub
+    sPopup.Color = COR_VERMELHO
     sPopup.Thickness = 1.5
-    sPopup.Transparency = 0.3
+    sPopup.Transparency = 0.2
 
     -- 🫧 BOLHAS SUBINDO DENTRO DO POPUP
     local bolhasPopup = Instance.new("Frame", popup)
@@ -2241,7 +2244,7 @@ task.spawn(function()
     bolhasPopup.Size = UDim2.new(1, 0, 1, 0)
     bolhasPopup.BackgroundTransparency = 1
     bolhasPopup.ClipsDescendants = true
-    bolhasPopup.ZIndex = 0
+    bolhasPopup.ZIndex = 1
     bolhasPopup.Active = false
 
     local popupAberto = true
@@ -2249,25 +2252,20 @@ task.spawn(function()
     local function criarBolhaPopup()
         if not popupAberto or not bolhasPopup.Parent then return end
 
-        local tam = math.random(5, 12)
+        local tam = math.random(5, 10)
         local bolha = Instance.new("Frame", bolhasPopup)
         bolha.Size = UDim2.new(0, tam, 0, tam)
         bolha.Position = UDim2.new(math.random() * 0.95, 0, 1, 10)
         bolha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        bolha.BackgroundTransparency = math.random(20, 45) / 100
+        bolha.BackgroundTransparency = math.random(60, 80) / 100
         bolha.BorderSizePixel = 0
-        bolha.ZIndex = 0
+        bolha.ZIndex = 1
 
         local c = Instance.new("UICorner", bolha)
         c.CornerRadius = UDim.new(1, 0)
 
-        local stroke = Instance.new("UIStroke", bolha)
-        stroke.Color = Color3.fromRGB(255, 255, 255)
-        stroke.Thickness = 1.2
-        stroke.Transparency = 0.4
-
-        local duracao = math.random(5, 9)
-        local driftX = math.random(-50, 50)
+        local duracao = math.random(5, 8)
+        local driftX = math.random(-30, 30)
 
         local tween = TweenService:Create(bolha, TweenInfo.new(duracao, Enum.EasingStyle.Linear), {
             Position = UDim2.new(bolha.Position.X.Scale, driftX, 0, -20),
@@ -2282,121 +2280,118 @@ task.spawn(function()
     task.spawn(function()
         while popupAberto and bolhasPopup.Parent do
             criarBolhaPopup()
-            task.wait(math.random(10, 35) / 100)
+            task.wait(math.random(15, 35) / 100)
         end
     end)
 
     -- ───── Header ─────
     local header = Instance.new("Frame", popup)
-    header.Size = UDim2.new(1, 0, 0, 40)
+    header.Size = UDim2.new(1, 0, 0, 42)
     header.BackgroundTransparency = 1
-    header.ZIndex = 1000
+    header.ZIndex = 5
 
     local icone = Instance.new("TextLabel", header)
     icone.Size = UDim2.new(0, 24, 0, 24)
-    icone.Position = UDim2.new(0, 12, 0, 8)
+    icone.Position = UDim2.new(0, 14, 0, 9)
     icone.BackgroundTransparency = 1
     icone.Text = "🔔"
     icone.TextSize = 16
-    icone.ZIndex = 1000
+    icone.ZIndex = 6
 
     local titulo = Instance.new("TextLabel", header)
     titulo.Size = UDim2.new(1, -80, 1, 0)
-    titulo.Position = UDim2.new(0, 42, 0, 0)
+    titulo.Position = UDim2.new(0, 44, 0, 0)
     titulo.BackgroundTransparency = 1
-    titulo.Text = "Update!"
-    titulo.TextColor3 = COR_VERMELHO                 -- 👈 cor do texto (branco)
+    titulo.Text = "Novidades & Update!"
+    titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
     titulo.TextSize = 13
     titulo.Font = Enum.Font.GothamBold
     titulo.TextXAlignment = Enum.TextXAlignment.Left
-    titulo.ZIndex = 1000
+    titulo.ZIndex = 6
 
     -- Botão fechar (X)
     local fechar = Instance.new("TextButton", header)
     fechar.Size = UDim2.new(0, 24, 0, 24)
-    fechar.Position = UDim2.new(1, -32, 0, 8)
+    fechar.Position = UDim2.new(1, -34, 0, 9)
     fechar.BackgroundTransparency = 1
     fechar.Text = "✕"
-    fechar.TextColor3 = COR_VERMELHO
+    fechar.TextColor3 = COR_TEXTO_CINZA
     fechar.TextSize = 14
     fechar.Font = Enum.Font.GothamBold
-    fechar.ZIndex = 1000
+    fechar.ZIndex = 6
     fechar.AutoButtonColor = false
 
-    fechar.MouseEnter:Connect(function()
-        fechar.TextColor3 = COR_VERMELHO
-    end)
-    fechar.MouseLeave:Connect(function()
-        fechar.TextColor3 = COR_VERMELHO
-    end)
+    fechar.MouseEnter:Connect(function() fechar.TextColor3 = COR_VERMELHO end)
+    fechar.MouseLeave:Connect(function() fechar.TextColor3 = COR_TEXTO_CINZA end)
 
     -- Linha separadora
     local separador = Instance.new("Frame", popup)
-    separador.Size = UDim2.new(1, -24, 0, 1)
-    separador.Position = UDim2.new(0, 12, 0, 42)
+    separador.Size = UDim2.new(1, -28, 0, 1)
+    separador.Position = UDim2.new(0, 14, 0, 42)
     separador.BackgroundColor3 = COR_BORDA
     separador.BorderSizePixel = 0
-    separador.ZIndex = 1000
+    separador.ZIndex = 5
 
-    -- Área do conteúdo
+    -- Área do conteúdo (Lista de novidades)
     local conteudo = Instance.new("ScrollingFrame", popup)
-    conteudo.Size = UDim2.new(1, -24, 1, -120)
-    conteudo.Position = UDim2.new(0, 12, 0, 50)
+    conteudo.Size = UDim2.new(1, -28, 1, -100)
+    conteudo.Position = UDim2.new(0, 14, 0, 50)
     conteudo.BackgroundTransparency = 1
     conteudo.BorderSizePixel = 0
     conteudo.ScrollBarThickness = 2
     conteudo.ScrollBarImageColor3 = COR_BORDA
     conteudo.CanvasSize = UDim2.new(0, 0, 0, 0)
     conteudo.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    conteudo.ZIndex = 1000
+    conteudo.ZIndex = 5
 
     local layoutConteudo = Instance.new("UIListLayout", conteudo)
-    layoutConteudo.Padding = UDim.new(0, 6)
+    layoutConteudo.Padding = UDim.new(0, 8)
     layoutConteudo.SortOrder = Enum.SortOrder.LayoutOrder
 
     local function addItem(texto)
         local item = Instance.new("TextLabel", conteudo)
-        item.Size = UDim2.new(1, -4, 0, 20)
+        item.Size = UDim2.new(1, 0, 0, 0)
+        item.AutomaticSize = Enum.AutomaticSize.Y
         item.BackgroundTransparency = 1
-        item.Text = "• " .. texto
-        item.TextColor3 = COR_VERMELHO
-        item.TextSize = 10
-        item.Font = Enum.Font.Gotham
+        item.Text = "•  " .. texto
+        item.TextColor3 = Color3.fromRGB(230, 230, 240)
+        item.TextSize = 11
+        item.Font = Enum.Font.GothamMedium
         item.TextXAlignment = Enum.TextXAlignment.Left
         item.TextWrapped = true
-        item.ZIndex = 1000
+        item.ZIndex = 6
     end
 
-    -- 👇 EDITE AQUI AS NOVIDADES
+    -- Novidades
     addItem("Muito obrigado por usar nosso Hub!")
     addItem("Em breve adicionaremos mais coisas!")
-    addItem("Entre no nosso discord para ficar por dentro de tudo")
+    addItem("Entre no nosso Discord para ficar por dentro de tudo!")
 
-    -- Botão OK (mesma cor do hub, sem verde)
+    -- Botão "Entendi!" destacado
     local botaoOk = Instance.new("TextButton", popup)
-    botaoOk.Size = UDim2.new(1, -24, 0, 30)
-    botaoOk.Position = UDim2.new(0, 12, 1, -42)
-    botaoOk.BackgroundColor3 = COR_SECUNDARIA
-    botaoOk.BackgroundTransparency = TRANSP_CARDS
+    botaoOk.Size = UDim2.new(1, -28, 0, 32)
+    botaoOk.Position = UDim2.new(0, 14, 1, -42)
+    botaoOk.BackgroundColor3 = COR_VERMELHO
+    botaoOk.BackgroundTransparency = 0.2
     botaoOk.BorderSizePixel = 0
     botaoOk.Text = "Entendi!"
-    botaoOk.TextColor3 = COR_VERMELHO
+    botaoOk.TextColor3 = Color3.fromRGB(255, 255, 255)
     botaoOk.TextSize = 11
     botaoOk.Font = Enum.Font.GothamBold
     botaoOk.AutoButtonColor = false
-    botaoOk.ZIndex = 1000
+    botaoOk.ZIndex = 6
 
     local cBtn = Instance.new("UICorner", botaoOk)
     cBtn.CornerRadius = UDim.new(0, 6)
 
     botaoOk.MouseEnter:Connect(function()
-        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = 0.25}):Play()
+        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
     end)
     botaoOk.MouseLeave:Connect(function()
-        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = TRANSP_CARDS}):Play()
+        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = 0.2}):Play()
     end)
 
-    -- Função fechar
+    -- Função de fechar e abrir o Hub principal
     local function fecharPopup()
         popupAberto = false
         TweenService:Create(popup, TweenInfo.new(0.3), {
@@ -2419,30 +2414,33 @@ task.spawn(function()
 
         task.wait(0.35)
         popup:Destroy()
-            MainFrame.Visible = true
-            local tamanhoFinal = MainFrame.size
-            local posFinal = MainFrame.Position
 
-            MainFrame.size = UDim2.new(0,0,0,0)
-            MainFrame.Position = UDim2.new(0.5,0,0.5,0)
+        -- Abre o Hub Principal após fechar
+        MainFrame.Visible = true
+        local tamanhoFinal = UDim2.new(0, 560, 0, 400)
+        local posFinal = UDim2.new(0.5, -280, 0.5, -200)
 
-            TweenService:Create(MainFrame, TweenInfo.new(0.5,Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                    Size = tamanhoFinal,
-                    Position = posFinal
-                }):Play()
-            end
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+        TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = tamanhoFinal,
+            Position = posFinal
+        }):Play()
+    end
 
     fechar.MouseButton1Click:Connect(fecharPopup)
     botaoOk.MouseButton1Click:Connect(fecharPopup)
 
-    -- Animação de entrada
+    -- Animação de Entrada
     popup.Size = UDim2.new(0, 0, 0, 0)
     popup.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(popup, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 340, 0, 230),
-        Position = UDim2.new(0.5, -170, 0.5, -115)
+        Size = UDim2.new(0, 360, 0, 240),
+        Position = UDim2.new(0.5, -180, 0.5, -120)
     }):Play()
 end)
+
 -- ==========================================================
 -- 📝 ALTERAR BIO (Welcome, NomeDoJogador)
 -- ==========================================================
