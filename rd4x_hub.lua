@@ -2229,11 +2229,10 @@ UI.Button(Tabs.Troll, {
         Notify("Troll", "Ônibus parado", 2)
     end
 })
--- ==========================================================
+--------------------------------------------------------------------------------
 -- 📦 SISTEMA DE PROPS COMPLETO (Kill / Bring / All)
--- ==========================================================
+--------------------------------------------------------------------------------
 
--- ───────── CONFIGURAÇÕES ─────────
 local PROP_KILL_Y      = -300
 local PROP_MOVE_SPEED  = 5
 local PROP_MOVE_RANGE  = 3
@@ -2241,7 +2240,6 @@ local TEMPO_MAX_SIT    = 8
 local PROP_TIPO        = "FurnitureBleachers"
 local PROP_CATEGORIA   = "Furniture"
 
--- ───────── DROPDOWN DE ALVO ─────────
 local alvoPropSelecionado = nil
 
 local function obterListaProp()
@@ -2270,9 +2268,6 @@ UI.Button(Tabs.Troll, {
     end,
 })
 
--- ───────── FUNÇÕES BASE ─────────
-
--- 1. Equipa o PropMaker (SEM abrir menu)
 local function pegarPropMaker()
     local RE = ReplicatedStorage:FindFirstChild("RE")
     if not RE then return nil end
@@ -2281,20 +2276,13 @@ local function pegarPropMaker()
     local hum = char and char:FindFirstChild("Humanoid")
     if not char or not hum then return nil end
 
-    -- Já tá equipado? Usa direto
     local propMaker = char:FindFirstChild("PropMaker")
-    if propMaker then
-        print("✅ PropMaker já equipado")
-        return propMaker
-    end
+    if propMaker then return propMaker end
 
-    -- Tenta pegar do backpack
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     propMaker = backpack and backpack:FindFirstChild("PropMaker")
 
-    -- Não tem em lugar nenhum? Pede pro servidor
     if not propMaker then
-        print("🆕 Pedindo PropMaker...")
         local toolRemote = RE:FindFirstChild("1Too1l")
         if toolRemote then
             pcall(function()
@@ -2302,22 +2290,17 @@ local function pegarPropMaker()
             end)
         end
         task.wait(0.4)
-        propMaker = char:FindFirstChild("PropMaker")
-            or (backpack and backpack:FindFirstChild("PropMaker"))
+        propMaker = char:FindFirstChild("PropMaker") or (backpack and backpack:FindFirstChild("PropMaker"))
     end
 
-    -- Equipa se tiver na mochila
     if propMaker and propMaker.Parent ~= char then
-        pcall(function()
-            hum:EquipTool(propMaker)
-        end)
+        pcall(function() hum:EquipTool(propMaker) end)
         task.wait(0.3)
     end
 
     return char:FindFirstChild("PropMaker")
 end
 
--- 2. Abre o menu DEPOIS de equipar
 local function selecionarProp(nome, categoria)
     local RE = ReplicatedStorage:FindFirstChild("RE")
     if not RE then return end
@@ -2333,6 +2316,7 @@ local function selecionarProp(nome, categoria)
     task.wait(0.4)
 end
 
+-- 🛠️ CORREÇÃO DA FUNÇÃO SPAWNAR PROP
 local function spawnarProp(posicao)
     local char = LocalPlayer.Character
     if not char then return false end
@@ -2346,38 +2330,42 @@ local function spawnarProp(posicao)
         and Workspace.Model.Street:FindFirstChild("Street")
         or Workspace
 
-    -- 🎯 PASSO 1: Manda a posição
     pcall(function()
         toolProp:FireServer(chao, posicao)
     end)
-    task.wait(0.15)  -- 👈 ESSA PAUSA É CRUCIAL
+    task.wait(0.2)
 
-    -- 🎯 PASSO 2: Converte a posição do mundo pra tela
     local camera = Workspace.CurrentCamera
-    local posTela = camera:WorldToViewportPoint(posicao)
+    local posTela, naTela = camera:WorldToViewportPoint(posicao)
 
-    -- 🎯 PASSO 3: Simula UM clique só na posição certa
-    pcall(function()
-        local vu = game:GetService("VirtualUser")
-        vu:CaptureController()
-        vu:ClickButton1(Vector2.new(posTela.X, posTela.Y))
-    end)
+    if naTela then
+        pcall(function()
+            local vu = game:GetService("VirtualUser")
+            vu:CaptureController()
+            vu:ClickButton1(Vector2.new(posTela.X, posTela.Y))
+        end)
+    end
 
     return true
 end
 
+-- Função auxiliar que faltava
+local function spawnarPropFacil()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        spawnarProp(hrp.Position + (hrp.CFrame.LookVector * 5))
+    end
+end
 
 local function encontrarMeusProps()
     local WorkspaceCom = Workspace:FindFirstChild("WorkspaceCom")
     if not WorkspaceCom then return {} end
 
     local props = {}
-    -- 🎯 Pega o nome de QUEM tá usando o hub (não hardcoded)
     local meuNome = LocalPlayer.Name
 
     for _, container in ipairs(WorkspaceCom:GetChildren()) do
         for _, prop in ipairs(container:GetChildren()) do
-            -- 🎯 Procura o prop que TEM o nome do usuário atual
             if prop.Name:find(meuNome, 1, true) then
                 if prop:FindFirstChild("SetCurrentCFrame") then
                     table.insert(props, prop)
@@ -2388,7 +2376,6 @@ local function encontrarMeusProps()
     return props
 end
 
--- 5. Move um prop
 local function moverProp(prop, cf)
     if not prop or not prop.Parent then return end
     local remote = prop:FindFirstChild("SetCurrentCFrame")
@@ -2397,7 +2384,6 @@ local function moverProp(prop, cf)
     end
 end
 
--- 6. Deleta 1 prop
 local function deletarUmProp()
     local RE = ReplicatedStorage:FindFirstChild("RE")
     if not RE then return end
@@ -2407,7 +2393,6 @@ local function deletarUmProp()
     end
 end
 
--- 7. Deleta todos os props
 local function deletarTodosProps()
     local RE = ReplicatedStorage:FindFirstChild("RE")
     if not RE then return end
@@ -2417,8 +2402,7 @@ local function deletarTodosProps()
     end
 end
 
--- ───────── FUNÇÕES DE AÇÃO ─────────
-
+-- Execuções de Kill e Bring corrigidas com o spawn correto
 local function executarKillProp(nomeAlvo)
     local alvo = Players:FindFirstChild(nomeAlvo)
     if not alvo or not alvo.Character then return false end
@@ -2427,10 +2411,8 @@ local function executarKillProp(nomeAlvo)
     if not hum or not hrp then return false end
 
     local antes = #encontrarMeusProps()
-    
-    -- Spawna automaticamente (sem clicar)
     spawnarProp(hrp.Position)
-    task.wait(0.8)   -- espera o prop aparecer
+    task.wait(0.8)
 
     local agora = encontrarMeusProps()
     if #agora <= antes then
@@ -2482,11 +2464,8 @@ local function executarBringProp(nomeAlvo)
     if not hum or not hrp then return false end
 
     local antes = encontrarMeusProps()
-
-    Notify("Props", "👆 Clique na sua frente pra spawnar!", 4)
     spawnarPropFacil()
 
-    -- Espera o prop aparecer
     local prop = nil
     local t0 = tick()
     while tick() - t0 < 10 do
@@ -2536,184 +2515,14 @@ local function executarBringProp(nomeAlvo)
             Notify("Props", "🎣 Alvo trazido até você!", 2)
         end
     end)
-
     return true
 end
-
-local function executarKillAll()
-    local alvos = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            table.insert(alvos, p)
-        end
-    end
-    if #alvos == 0 then
-        Notify("Props", "Nenhum alvo no servidor", 2)
-        return
-    end
-
-    Notify("Props", "Spawnando " .. #alvos .. " props...", 3)
-
-    local propsPorJogador = {}
-    for _, alvo in ipairs(alvos) do
-        local antes = #encontrarMeusProps()
-        spawnarProp(alvo.Character.HumanoidRootPart.Position)
-        task.wait(0.25)
-        local depois = encontrarMeusProps()
-        if #depois > antes then
-            propsPorJogador[alvo] = depois[#depois]
-        end
-    end
-
-    Notify("Props", "Aguardando 3s...", 3)
-    task.wait(3)
-
-    local ativos = {}
-    for alvo, prop in pairs(propsPorJogador) do
-        ativos[alvo] = {prop = prop, sentou = false}
-    end
-
-    local t0 = tick()
-    local conexaoMestre
-    conexaoMestre = RunService.Heartbeat:Connect(function()
-        if tick() - t0 > TEMPO_MAX_SIT + 3 then
-            if conexaoMestre then conexaoMestre:Disconnect() end
-            for _, dados in pairs(ativos) do
-                if dados.prop and dados.prop.Parent then
-                    local pos = dados.prop:GetPivot().Position
-                    moverProp(dados.prop, CFrame.new(pos.X, PROP_KILL_Y, pos.Z))
-                end
-            end
-            task.wait(0.6)
-            deletarTodosProps()
-            Notify("Props", "Kill All finalizado!", 2)
-            return
-        end
-
-        local todosSentaram = true
-        for alvo, dados in pairs(ativos) do
-            if not dados.sentou and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
-                local hum = alvo.Character:FindFirstChild("Humanoid")
-                local hrp = alvo.Character.HumanoidRootPart
-                local t = tick() * PROP_MOVE_SPEED
-                local offsetY = math.sin(t) * PROP_MOVE_RANGE
-                moverProp(dados.prop, CFrame.new(hrp.Position + Vector3.new(0, offsetY, 0)))
-
-                if hum and hum.Sit then
-                    dados.sentou = true
-                else
-                    todosSentaram = false
-                end
-            end
-        end
-
-        if todosSentaram then
-            if conexaoMestre then conexaoMestre:Disconnect() end
-            task.wait(0.2)
-            for _, dados in pairs(ativos) do
-                if dados.prop and dados.prop.Parent then
-                    local pos = dados.prop:GetPivot().Position
-                    moverProp(dados.prop, CFrame.new(pos.X, PROP_KILL_Y, pos.Z))
-                end
-            end
-            task.wait(0.8)
-            deletarTodosProps()
-            Notify("Props", "Kill All completo!", 2)
-        end
-    end)
-end
-
-local function executarBringAll()
-    local alvos = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            table.insert(alvos, p)
-        end
-    end
-    if #alvos == 0 then
-        Notify("Props", "Nenhum alvo no servidor", 2)
-        return
-    end
-
-    Notify("Props", "Spawnando " .. #alvos .. " props...", 3)
-
-    local propsPorJogador = {}
-    for _, alvo in ipairs(alvos) do
-        local antes = #encontrarMeusProps()
-        spawnarProp(alvo.Character.HumanoidRootPart.Position)
-        task.wait(0.25)
-        local depois = encontrarMeusProps()
-        if #depois > antes then
-            propsPorJogador[alvo] = depois[#depois]
-        end
-    end
-
-    Notify("Props", "Aguardando 3s...", 3)
-    task.wait(3)
-
-    local ativos = {}
-    for alvo, prop in pairs(propsPorJogador) do
-        ativos[alvo] = {prop = prop, sentou = false}
-    end
-
-    local t0 = tick()
-    local conexaoMestre
-    conexaoMestre = RunService.Heartbeat:Connect(function()
-        if tick() - t0 > TEMPO_MAX_SIT + 3 then
-            if conexaoMestre then conexaoMestre:Disconnect() end
-            deletarTodosProps()
-            return
-        end
-
-        local todosSentaram = true
-        for alvo, dados in pairs(ativos) do
-            if not dados.sentou and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
-                local hum = alvo.Character:FindFirstChild("Humanoid")
-                local hrp = alvo.Character.HumanoidRootPart
-                local t = tick() * PROP_MOVE_SPEED
-                local offsetY = math.sin(t) * PROP_MOVE_RANGE
-                moverProp(dados.prop, CFrame.new(hrp.Position + Vector3.new(0, offsetY, 0)))
-
-                if hum and hum.Sit then
-                    dados.sentou = true
-                else
-                    todosSentaram = false
-                end
-            end
-        end
-
-        if todosSentaram then
-            if conexaoMestre then conexaoMestre:Disconnect() end
-            task.wait(0.2)
-            local minhaPos = LocalPlayer.Character
-                and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                and LocalPlayer.Character.HumanoidRootPart.Position
-                or Vector3.new(0, 10, 0)
-            for _, dados in pairs(ativos) do
-                if dados.prop and dados.prop.Parent then
-                    moverProp(dados.prop, CFrame.new(minhaPos + Vector3.new(0, 3, 0)))
-                end
-            end
-            task.wait(0.8)
-            deletarTodosProps()
-            Notify("Props", "Bring All completo!", 2)
-        end
-    end)
-end
-
--- ───────── BOTÕES ─────────
 
 UI.Button(Tabs.Troll, {
     Name = "💀 Kill Prop (Alvo)",
     Callback = function()
-        if not alvoPropSelecionado then
-            Notify("Props", "Selecione um alvo!", 2)
-            return
-        end
-        if not pegarPropMaker() then
-            Notify("Props", "Falha ao equipar caixa", 2)
-            return
-        end
+        if not alvoPropSelecionado then Notify("Props", "Selecione um alvo!", 2) return end
+        if not pegarPropMaker() then Notify("Props", "Falha ao equipar caixa", 2) return end
         selecionarProp()
         Notify("Props", "Iniciando Kill Prop...", 2)
         task.spawn(function() executarKillProp(alvoPropSelecionado) end)
@@ -2723,32 +2532,11 @@ UI.Button(Tabs.Troll, {
 UI.Button(Tabs.Troll, {
     Name = "🎣 Bring Prop (Trazer Alvo)",
     Callback = function()
-        if not alvoPropSelecionado then
-            Notify("Props", "Selecione um alvo!", 2)
-            return
-        end
+        if not alvoPropSelecionado then Notify("Props", "Selecione um alvo!", 2) return end
         if not pegarPropMaker() then return end
         selecionarProp()
         Notify("Props", "Iniciando Bring Prop...", 2)
         task.spawn(function() executarBringProp(alvoPropSelecionado) end)
-    end,
-})
-
-UI.Button(Tabs.Troll, {
-    Name = "💀💀 Kill All (Todos)",
-    Callback = function()
-        if not pegarPropMaker() then return end
-        selecionarProp()
-        task.spawn(executarKillAll)
-    end,
-})
-
-UI.Button(Tabs.Troll, {
-    Name = "🎣🎣 Bring All (Trazer Todos)",
-    Callback = function()
-        if not pegarPropMaker() then return end
-        selecionarProp()
-        task.spawn(executarBringAll)
     end,
 })
 
@@ -2759,6 +2547,7 @@ UI.Button(Tabs.Troll, {
         Notify("Props", "Props limpos!", 2)
     end,
 })
+
 --------------------------------------------------------------------------------
 -- ABA OUTROS
 --------------------------------------------------------------------------------
