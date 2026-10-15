@@ -2336,62 +2336,36 @@ end
 local function spawnarProp(posicao)
     local char = LocalPlayer.Character
     if not char then return false end
-
     local propMaker = char:FindFirstChild("PropMaker")
     if not propMaker then return false end
-
     local toolProp = propMaker:FindFirstChild("Tool_PropMake")
     if not toolProp then return false end
-
-    local camera = Workspace.CurrentCamera
-    if not camera then return false end
 
     local chao = Workspace:FindFirstChild("Model")
         and Workspace.Model:FindFirstChild("Street")
         and Workspace.Model.Street:FindFirstChild("Street")
         or Workspace
 
-    -- 🎯 PASSO 1: Manda a posição pro servidor
+    -- 🎯 PASSO 1: Manda a posição
     pcall(function()
         toolProp:FireServer(chao, posicao)
     end)
-    task.wait(0.08)
+    task.wait(0.15)  -- 👈 ESSA PAUSA É CRUCIAL
 
-    -- 🎯 PASSO 2: Simula o clique automaticamente na tela
-    local posTela, onScreen = camera:WorldToViewportPoint(posicao)
-    local screenGui = game:GetService("CoreGui")
-    local screenSize = camera.ViewportSize
+    -- 🎯 PASSO 2: Converte a posição do mundo pra tela
+    local camera = Workspace.CurrentCamera
+    local posTela = camera:WorldToViewportPoint(posicao)
 
-    if not onScreen then
-        -- Se a posição tá fora da tela, calcula um fallback
-        posTela = Vector3.new(screenSize.X / 2, screenSize.Y / 2, 0)
-    end
-
-    -- Método 1: VirtualUser (funciona na maioria dos executores)
+    -- 🎯 PASSO 3: Simula UM clique só na posição certa
     pcall(function()
         local vu = game:GetService("VirtualUser")
         vu:CaptureController()
         vu:ClickButton1(Vector2.new(posTela.X, posTela.Y))
     end)
 
-    -- Método 2: mouse1click (fallback)
-    task.wait(0.05)
-    pcall(function()
-        if mouse1click then mouse1click() end
-    end)
-
-    -- Método 3: mousemoveabs + mouse1click (fallback)
-    task.wait(0.05)
-    pcall(function()
-        if mousemoveabs and mouse1click then
-            mousemoveabs(posTela.X, posTela.Y)
-            task.wait(0.02)
-            mouse1click()
-        end
-    end)
-
     return true
 end
+
 
 -- 4. Encontra meus props no mundo
 local function encontrarMeusProps()
@@ -2450,11 +2424,11 @@ local function executarKillProp(nomeAlvo)
     local hrp = alvo.Character:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return false end
 
-    local antes = encontrarMeusProps()
-
-    -- 🎯 Spawna AUTOMATICAMENTE na posição do alvo (com clique simulado)
+    local antes = #encontrarMeusProps()
+    
+    -- Spawna automaticamente (sem clicar)
     spawnarProp(hrp.Position)
-    task.wait(0.6)
+    task.wait(0.8)   -- espera o prop aparecer
 
     local agora = encontrarMeusProps()
     if #agora <= antes then
