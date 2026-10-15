@@ -2287,13 +2287,13 @@ task.spawn(function()
     -- ───── Header ─────
     local header = Instance.new("Frame", popup)
     header.Size = UDim2.new(1, 0, 0, 42)
-    header.BackgroundTransparency = 0
+    header.BackgroundTransparency = 1
     header.ZIndex = 5
 
     local icone = Instance.new("TextLabel", header)
     icone.Size = UDim2.new(0, 24, 0, 24)
     icone.Position = UDim2.new(0, 14, 0, 9)
-    icone.BackgroundTransparency = 0
+    icone.BackgroundTransparency = 1
     icone.Text = "🔔"
     icone.TextSize = 16
     icone.ZIndex = 6
@@ -2301,7 +2301,7 @@ task.spawn(function()
     local titulo = Instance.new("TextLabel", header)
     titulo.Size = UDim2.new(1, -80, 1, 0)
     titulo.Position = UDim2.new(0, 44, 0, 0)
-    titulo.BackgroundTransparency = 0
+    titulo.BackgroundTransparency = 1
     titulo.Text = "Novidades & Update!"
     titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
     titulo.TextSize = 13
@@ -2336,7 +2336,7 @@ task.spawn(function()
     local conteudo = Instance.new("ScrollingFrame", popup)
     conteudo.Size = UDim2.new(1, -28, 1, -100)
     conteudo.Position = UDim2.new(0, 14, 0, 50)
-    conteudo.BackgroundTransparency = 0
+    conteudo.BackgroundTransparency = 1
     conteudo.BorderSizePixel = 0
     conteudo.ScrollBarThickness = 2
     conteudo.ScrollBarImageColor3 = COR_VERDE
@@ -2352,7 +2352,7 @@ task.spawn(function()
         local item = Instance.new("TextLabel", conteudo)
         item.Size = UDim2.new(1, 0, 0, 0)
         item.AutomaticSize = Enum.AutomaticSize.Y
-        item.BackgroundTransparency = 0
+        item.BackgroundTransparency = 1
         item.Text = "•  " .. texto
         item.TextColor3 = Color3.fromRGB(255, 255, 255)
         item.TextSize = 11
