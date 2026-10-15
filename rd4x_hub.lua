@@ -2367,16 +2367,18 @@ local function spawnarProp(posicao)
 end
 
 
--- 4. Encontra meus props no mundo
 local function encontrarMeusProps()
     local WorkspaceCom = Workspace:FindFirstChild("WorkspaceCom")
     if not WorkspaceCom then return {} end
 
     local props = {}
+    -- 🎯 Pega o nome de QUEM tá usando o hub (não hardcoded)
+    local meuNome = LocalPlayer.Name
+
     for _, container in ipairs(WorkspaceCom:GetChildren()) do
         for _, prop in ipairs(container:GetChildren()) do
-            if prop.Name:find("Prop" .. LocalPlayer.Name, 1, true)
-               or prop.Name:find(LocalPlayer.Name, 1, true) then
+            -- 🎯 Procura o prop que TEM o nome do usuário atual
+            if prop.Name:find(meuNome, 1, true) then
                 if prop:FindFirstChild("SetCurrentCFrame") then
                     table.insert(props, prop)
                 end
