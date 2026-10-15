@@ -1702,6 +1702,14 @@ UI.Button(Tabs.Player, { Name = "Reset Personagem", Callback = function()
         LocalPlayer.Character.Humanoid.Health = 0
     end
 end})
+UI.Button(Tabs.Outros, {
+    Name = "🎥 Camera Noclip",
+    Callback = function()
+        pcall(function() LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam end)
+        Notify("Outros", "Câmera Noclip ativada!", 2)
+    end
+})
+
 -- ==========================================================
 -- 📝 ROLEPLAY BIO
 -- ==========================================================
@@ -1974,10 +1982,274 @@ UI.Button(Tabs.Carros, { Name = "Fly Car", Callback = function()
         end)
     end)
 end})
+-- ==========================================================
+-- 🌈 RAINBOW CAR
+-- ==========================================================
+local rainbowCarAtivo = false
+
+UI.Toggle(Tabs.Carros, {
+    Name = "🌈 Carro Arco-Íris (Rainbow Car)",
+    CurrentValue = false,
+    Callback = function(state)
+        rainbowCarAtivo = state
+        
+        if rainbowCarAtivo then
+            Notify("Carros", "Rainbow Car Ativado!", 2)
+            task.spawn(function()
+                local RE = ReplicatedStorage:FindFirstChild("RE")
+                local carColorRemote = RE and RE:FindFirstChild("1Ca1rColo1r")
+                local hue = 0
+
+                while rainbowCarAtivo do
+                    local char = LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    
+                    -- Verifica se está sentado em um veículo
+                    if hum and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
+                        hue = (hue + 0.01) % 1
+                        local corRGB = Color3.fromHSV(hue, 1, 1)
+                        
+                        -- Tenta aplicar pelo Remote do Brookhaven
+                        if carColorRemote then
+                            pcall(function()
+                                carColorRemote:FireServer("PickingCarColor", corRGB)
+                            end)
+                        end
+                        
+                        -- Tenta aplicar na textura/cor do modelo local/servidor
+                        local veiculo = hum.SeatPart:FindFirstAncestorOfClass("Model")
+                        if veiculo then
+                            for _, part in ipairs(veiculo:GetDescendants()) do
+                                if part:IsA("BasePart") and part.Name ~= "Seat" then
+                                    pcall(function() part.Color = corRGB end)
+                                end
+                            end
+                        end
+                    end
+                    task.wait(0.1)
+                end
+            end)
+        else
+            Notify("Carros", "Rainbow Car Desativado", 2)
+        end
+    end
+})
+-- ==========================================================
+-- 🤖 PILOTO AUTOMÁTICO (JOGADOR OU LOCAL FIXO)
+-- ==========================================================
+local autoDriveAtivo = false
+local destinoSelecionado = "🏛️ Praça"
+
+-- 📍 Tabela de locais fixos do Brookhaven
+local LOCAIS_BROOKHAVEN = {
+    ["🏛️ Praça"]            = Vector3.new(-26, 7, 1),
+    ["🏥 Hospital"]         = Vector3.new(-317, 5, 21),
+    ["⛰️ Morro"]            = Vector3.new(-349, 66, -458),
+    ["🌲 Floresta"]         = Vector3.new(-254, 7, 1089),
+    ["🩳 Praia"]            = Vector3.new(-231, 0, 742),
+    ["🐥 Fazenda"]          = Vector3.new(-852, 3, -84),
+    ["🐴 Celeiro"]          = Vector3.new(-831, 3, -287),
+    ["🛏️ Hotel"]            = Vector3.new(168, 4, 161),
+    ["⛽ Posto de Gasolina"] = Vector3.new(157, 4, -301),
+    ["🚁 Heli + Drone"]     = Vector3.new(-695, 260, 790),
+    ["🏠 Casa Abandonada"]  = Vector3.new(1036, 6, 54),
+    ["⛵ Iate"]             = Vector3.new(-128, 32, 850),
+    ["🔌 Usina de Energia"]  = Vector3.new(228, 4, 813),
+}
+
+-- Função para gerar a lista combinada (Locais + Jogadores)
+local function obterListaPiloto()
+    local lista = {}
+
+    -- Add os Locais Fictícios/Pontos do Mapa primeiro
+    for nomeLocal, _ in pairs(LOCAIS_BROOKHAVEN) do
+        table.insert(lista, nomeLocal)
+    end
+
+    -- Add os Jogadores do Servidor
+    for _, p in ipairs(Players:GetPlayers()) do
+        table.insert(lista, "👤 " .. p.Name)
+    end
+
+    return lista
+end
+
+-- Dropdown
+local dropdownPiloto = UI.Dropdown(Tabs.Carros, {
+    Name = "🎯 Selecione o Destino (Local ou Player)",
+    Options = obterListaPiloto(),
+    CurrentOption = {"🏛️ Praça"},
+    Callback = function(opt)
+        if opt and opt[1] then 
+            destinoSelecionado = opt[1] 
+        end
+    end
+})
+
+UI.Button(Tabs.Carros, {
+    Name = "🔄 Atualizar Lista de Destinos",
+    Callback = function()
+        dropdownPiloto:Refresh(obterListaPiloto())
+        Notify("Carros", "Lista de destinos atualizada!", 2)
+    end
+})
+
+-- Toggle para Iniciar o Piloto Automático
+UI.Toggle(Tabs.Carros, {
+    Name = "🤖 Iniciar Piloto Automático",
+    CurrentValue = false,
+    Callback = function(state)
+        autoDriveAtivo = state
+
+        if autoDriveAtivo then
+            Notify("Carros", "Piloto Automático ligado! Destino: " .. destinoSelecionado, 3)
+
+            task.spawn(function()
+                while autoDriveAtivo do
+                    local char = LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    local seat = hum and hum.SeatPart
+
+                    if seat and seat:IsA("VehicleSeat") then
+                        local veiculo = seat:FindFirstAncestorOfClass("Model") or seat.Parent
+                        local posAlvo = nil
+
+                        -- 1. Verifica se o destino é um Local Fixo
+                        if LOCAIS_BROOKHAVEN[destinoSelecionado] then
+                            posAlvo = LOCAIS_BROOKHAVEN[destinoSelecionado]
+
+                        -- 2. Se for um Jogador (começa com "👤 ")
+                        else
+                            local nomeLimpo = destinoSelecionado:gsub("👤 ", "")
+                            local alvo = Players:FindFirstChild(nomeLimpo)
+                            if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
+                                posAlvo = alvo.Character.HumanoidRootPart.Position
+                            end
+                        end
+
+                        -- Move o veículo se encontrou a posição
+                        if veiculo and posAlvo then
+                            local posCarro = seat.Position
+                            local direcao = (Vector3.new(posAlvo.X, posCarro.Y, posAlvo.Z) - posCarro).Unit
+
+                            if (Vector3.new(posAlvo.X, posCarro.Y, posAlvo.Z) - posCarro).Magnitude > 8 then
+                                pcall(function()
+                                    seat.AssemblyLinearVelocity = direcao * 50
+                                    veiculo:PivotTo(CFrame.new(posCarro, Vector3.new(posAlvo.X, posCarro.Y, posAlvo.Z)))
+                                end)
+                            else
+                                pcall(function()
+                                    seat.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                                end)
+                                Notify("Carros", "🏁 Você chegou ao destino!", 2)
+                                autoDriveAtivo = false
+                                break
+                            end
+                        end
+                    else
+                        Notify("Carros", "Entre no banco do motorista!", 3)
+                        autoDriveAtivo = false
+                        break
+                    end
+                    task.wait(0.05)
+                end
+            end)
+        else
+            Notify("Carros", "Piloto Automático Desativado", 2)
+        end
+    end
+})
+-- ==========================================================
+-- 🚜 PUXAR TODOS OS CARROS DESOCUPADOS ATÉ VOCÊ
+-- ==========================================================
+UI.Button(Tabs.Carros, {
+    Name = "🧲 Bring All Vehicles (Puxar Carros Sem Motorista)",
+    Callback = function()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            Notify("Carros", "Seu personagem não foi encontrado!", 2)
+            return
+        end
+
+        local posicaoFrente = hrp.CFrame + (hrp.CFrame.LookVector * 10)
+        local quantidadePuxada = 0
+
+        pcall(function()
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("VehicleSeat") then
+                    -- Verifica se o assento do motorista está sem ninguém sentado
+                    if not obj.Occupant then
+                        local veiculo = obj:FindFirstAncestorOfClass("Model") or obj.Parent
+                        if veiculo and veiculo:IsA("Model") then
+                            -- Teleporta o modelo do veículo para a sua frente
+                            veiculo:PivotTo(posicaoFrente + Vector3.new(0, quantidadePuxada * 3, 0))
+                            quantidadePuxada = quantidadePuxada + 1
+                        end
+                    end
+                end
+            end
+        end)
+
+        if quantidadePuxada > 0 then
+            Notify("Carros", "🧲 " .. quantidadePuxada .. " carros puxados até você!", 3)
+        else
+            Notify("Carros", "Nenhum carro desocupado encontrado.", 2)
+        end
+    end
+})
 
 --------------------------------------------------------------------------------
 -- ABA CASAS
 --------------------------------------------------------------------------------
+-- ==========================================================
+-- 🔍 RASTREADOR / ESP DE COFRES
+-- ==========================================================
+local espCofresAtivo = false
+
+UI.Toggle(Tabs.Casas, {
+    Name = "🔍 ESP / Marker em Todos os Cofres",
+    CurrentValue = false,
+    Callback = function(state)
+        espCofresAtivo = state
+
+        if espCofresAtivo then
+            Notify("Casas", "Escaneando cofres no mapa...", 2)
+            task.spawn(function()
+                while espCofresAtivo do
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if (obj.Name:lower():find("safe") or obj.Name:lower():find("cofre")) and (obj:IsA("BasePart") or obj:IsA("Model")) then
+                            local parteAlvo = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildOfClass("BasePart")) or obj
+                            if parteAlvo and not parteAlvo:FindFirstChild("RD4X_SafeESP") then
+                                local bg = Instance.new("BillboardGui", parteAlvo)
+                                bg.Name = "RD4X_SafeESP"
+                                bg.Size = UDim2.new(0, 120, 0, 30)
+                                bg.AlwaysOnTop = true
+
+                                local lbl = Instance.new("TextLabel", bg)
+                                lbl.Size = UDim2.new(1, 0, 1, 0)
+                                lbl.BackgroundTransparency = 1
+                                lbl.Text = "🔒 COFRE"
+                                lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+                                lbl.TextSize = 12
+                                lbl.Font = Enum.Font.GothamBold
+                            end
+                        end
+                    end
+                    task.wait(3)
+                end
+            end)
+        else
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:FindFirstChild("RD4X_SafeESP") then
+                    obj.RD4X_SafeESP:Destroy()
+                end
+            end
+            Notify("Casas", "ESP de cofres desativado", 2)
+        end
+    end
+})
+
 local listaCasasServidor = {}
 for _, obj in ipairs(Workspace:GetDescendants()) do
     if obj.Name:lower():find("house") or obj.Name:lower():find("casa") then
@@ -2044,6 +2316,9 @@ end})
 -- ==========================================================
 -- 🎵 SONS VIA PlayerToolEvent (ToolMusicText)
 -- ==========================================================
+-- ==========================================================
+-- 🎵 MÚSICAS ORGANIZADAS (FUNK, FORRÓ E PHONK)
+-- ==========================================================
 local PlayerToolEvent = nil
 
 local function atualizarToolRemote()
@@ -2053,18 +2328,90 @@ end
 
 atualizarToolRemote()
 
+--------------------------------------------------------------------------------
+-- 🔥 CATEGORIA: FUNK
+--------------------------------------------------------------------------------
 UI.Button(Tabs.Musicas, {
-    Name = "🔥 Tocar Áudio Especial (84624301411909)",
+    Name = "🔥 piranha",
     Callback = function()
         atualizarToolRemote()
         if PlayerToolEvent then
-            PlayerToolEvent:FireServer("ToolMusicText", "84624301411909")
-            Notify("Música", "Áudio especial tocando!", 3)
+            PlayerToolEvent:FireServer("ToolMusicText", "103811087853875")
+            Notify("Música", "piranha tocando!", 3)
+        end
+    end
+})
+
+UI.Button(Tabs.Musicas, {
+    Name = "🔥 os menor",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "126719632721905")
+            Notify("Música", "os menor tocando!", 3)
+            
+        end
+    end
+})
+
+--------------------------------------------------------------------------------
+-- 🪗 CATEGORIA: FORRÓ
+--------------------------------------------------------------------------------
+UI.Button(Tabs.Musicas, {
+    Name = "🪗 Forró 1 - (Cole o Nome Aqui)",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
+            Notify("Música", "Forró 1 tocando!", 3)
         else
             Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
         end
     end
 })
+
+UI.Button(Tabs.Musicas, {
+    Name = "🪗 Forró 2 - (Cole o Nome Aqui)",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
+            Notify("Música", "Forró 2 tocando!", 3)
+        else
+            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
+        end
+    end
+})
+
+--------------------------------------------------------------------------------
+-- 🏎️ CATEGORIA: PHONK
+--------------------------------------------------------------------------------
+UI.Button(Tabs.Musicas, {
+    Name = "🏎️ Phonk 1 - (Cole o Nome Aqui)",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
+            Notify("Música", "Phonk 1 tocando!", 3)
+        else
+            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
+        end
+    end
+})
+
+UI.Button(Tabs.Musicas, {
+    Name = "🏎️ Phonk 2 - (Cole o Nome Aqui)",
+    Callback = function()
+        atualizarToolRemote()
+        if PlayerToolEvent then
+            PlayerToolEvent:FireServer("ToolMusicText", "COLE_O_ID_AQUI")
+            Notify("Música", "Phonk 2 tocando!", 3)
+        else
+            Notify("Erro", "Remote PlayerToolEvent não encontrado", 3)
+        end
+    end
+})
+
 
 local idMusicaCustom = ""
 
@@ -2091,6 +2438,61 @@ UI.Button(Tabs.Musicas, {
 -- ==========================================================
 -- 🚌 ÔNIBUS ESCOLAR — Spawn, Perseguição e Void
 -- ==========================================================
+-- ==========================================================
+-- 👑 HEAD SIT (SENTAR NA CABEÇA DO ALVO)
+-- ==========================================================
+local conexaoHeadSit = nil
+local headSitAtivo = false
+
+UI.Toggle(Tabs.Troll, {
+    Name = "👑 Head Sit (Sentar na Cabeça do Alvo)",
+    CurrentValue = false,
+    Callback = function(state)
+        headSitAtivo = state
+
+        if headSitAtivo then
+            local alvo = Players:FindFirstChild(alvoPropSelecionado) or Players:FindFirstChild(alvoTrollSelecionado)
+            if not alvo or not alvo.Character then
+                Notify("Troll", "Selecione um alvo válido na lista!", 2)
+                headSitAtivo = false
+                return
+            end
+
+            Notify("Troll", "Sentado na cabeça de: " .. alvo.Name, 2)
+
+            if conexaoHeadSit then conexaoHeadSit:Disconnect() end
+
+            conexaoHeadSit = RunService.RenderStepped:Connect(function()
+                pcall(function()
+                    local meuChar = LocalPlayer.Character
+                    local meuHrp = meuChar and meuChar:FindFirstChild("HumanoidRootPart")
+                    local meuHum = meuChar and meuChar:FindFirstChildOfClass("Humanoid")
+                    local cabecaAlvo = alvo.Character and alvo.Character:FindFirstChild("Head")
+
+                    if meuHrp and meuHum and cabecaAlvo then
+                        -- Força o estado de sentado e posiciona acima da cabeça
+                        meuHum.Sit = true
+                        meuHrp.CFrame = cabecaAlvo.CFrame * CFrame.new(0, 1.6, 0)
+                    else
+                        if conexaoHeadSit then conexaoHeadSit:Disconnect() end
+                    end
+                end)
+            end)
+        else
+            if conexaoHeadSit then
+                conexaoHeadSit:Disconnect()
+                conexaoHeadSit = nil
+            end
+            pcall(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                    LocalPlayer.Character:FindFirstChildOfClass("Humanoid").Sit = false
+                end
+            end)
+            Notify("Troll", "Saiu da cabeça do alvo", 2)
+        end
+    end
+})
+
 local RE_BUS = ReplicatedStorage:FindFirstChild("RE")
 local CarRemote = RE_BUS and RE_BUS:FindFirstChild("1Ca1r")
 local busAtivo = false
@@ -2652,6 +3054,52 @@ end})
 --------------------------------------------------------------------------------
 -- ABA PROTEÇÃO
 --------------------------------------------------------------------------------
+UI.Button(Tabs.Protecao, {
+    Name = "⚡ Ativar Anti-AFK (Evita Desconexão)",
+    Callback = function()
+        pcall(function()
+            local vu = game:GetService("VirtualUser")
+            LocalPlayer.Idled:Connect(function()
+                vu:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+                task.wait(1)
+                vu:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+            end)
+        end)
+        Notify("Proteção", "Anti-AFK ativado!", 3)
+    end
+})
+
+-- ==========================================================
+-- 👻 INVISIBLE PLAYER
+-- ==========================================================
+local invisivelAtivo = false
+
+UI.Toggle(Tabs.Player, {
+    Name = "👻 Personagem Invisível",
+    CurrentValue = false,
+    Callback = function(state)
+        invisivelAtivo = state
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        pcall(function()
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("Decal") then
+                    part.Transparency = invisivelAtivo and 1 or 0
+                elseif part:IsA("Accessory") and part:FindFirstChild("Handle") then
+                    part.Handle.Transparency = invisivelAtivo and 1 or 0
+                end
+            end
+        end)
+
+        if invisivelAtivo then
+            Notify("Player", "Você está invisível!", 2)
+        else
+            Notify("Player", "Visibilidade restaurada!", 2)
+        end
+    end
+})
+
 local antiSitAtivo, antiLagAtivo, antiFlingAtivo, noclipAtivo, espAtivo = false, false, false, false, false
 
 UI.Toggle(Tabs.Protecao, { Name = "Anti-Sit (Impede de sentar)", CurrentValue = false, Callback = function(v) antiSitAtivo = v end })
