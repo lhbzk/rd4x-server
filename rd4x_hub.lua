@@ -2399,9 +2399,9 @@ task.spawn(function()
             if remoteColor then remoteColor:FireServer("PickingRPNameColor", COR_VERMELHO) end
             task.wait(0.3)
             if LocalPlayer.UserId == MEU_ID_CREATOR then
-                if remoteName then remoteName:FireServer("RolePlayName", "👑 Rd4X Hub Creator 👑") end
+                if remoteName then remoteName:FireServer("RolePlayName", "👑 Rd4X Creator 👑") end
             else
-                if remoteName then remoteName:FireServer("RolePlayName", "🇧🇷 Rd4X Hub User 🇧🇷") end
+                if remoteName then remoteName:FireServer("RolePlayName", "🇧🇷 Rd4X User 🇧🇷 ") end
             end
         end
     end)
