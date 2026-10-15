@@ -2159,17 +2159,62 @@ UI.Button(Tabs.Troll, {
         end
 
         -- Garante que o ônibus é controlável
-        pcall(function()
-            for _, d in ipairs(onibus:GetDescendants()) do
-                if d:IsA("BasePart") then
-                    d.Anchored = false
-                    d.CanCollide = true
-                    d:SetNetworkOwner(nil)
-                end
+        -- Garante que o ônibus é controlável
+pcall(function()
+    for _, d in ipairs(onibus:GetDescendants()) do
+        if d:IsA("BasePart") then
+            d.Anchored = false
+            d.CanCollide = true
+            d:SetNetworkOwner(nil)
+        end
+    end
+end)
+
+-- 🚗 ENTRA AUTOMATICAMENTE COMO MOTORISTA
+task.spawn(function()
+    task.wait(0.2)
+    if not LocalPlayer.Character then return end
+    local meuHum = LocalPlayer.Character:FindFirstChild("Humanoid")
+    local meuHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not meuHum or not meuHrp then return end
+
+    -- Procura a cadeira do motorista
+    local cadeiraMotorista = nil
+    for _, d in ipairs(onibus:GetDescendants()) do
+        if d:IsA("VehicleSeat") then
+            -- Prioriza a cadeira marcada como motorista
+            if d.Name:lower():find("driver") or d.Name:lower():find("motorista") then
+                cadeiraMotorista = d
+                break
+            elseif not cadeiraMotorista then
+                cadeiraMotorista = d  -- fallback: primeira cadeira
             end
+        end
+    end
+
+    if cadeiraMotorista then
+        -- Move o personagem pra cima da cadeira
+        meuHrp.CFrame = cadeiraMotorista.CFrame + Vector3.new(0, 3, 0)
+        task.wait(0.1)
+
+        -- Força sentar
+        pcall(function()
+            cadeiraMotorista:Sit(meuHum)
         end)
 
-        Notify("Troll", "Ônibus perseguindo! 🚌", 2)
+        -- Garantia extra
+        task.wait(0.1)
+        if not meuHum.Sit then
+            pcall(function()
+                meuHum.Sit = true
+            end)
+        end
+
+        Notify("Troll", "Você é o motorista! 🚌", 2)
+    end
+end)
+
+Notify("Troll", "Ônibus perseguindo! 🚌", 2)
 
         -- Execução em paralelo
         task.spawn(function()
