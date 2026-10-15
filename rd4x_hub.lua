@@ -1,4 +1,4 @@
--- ==========================================================
+===================================
 -- 🇧🇷 RD4X HUB - BROOKHAVEN RP (INTERFACE PRÓPRIA + BOLHAS)
 -- Creator: J. Epstein (Rd4X Team Oficial)
 -- ==========================================================
@@ -1028,7 +1028,7 @@ local DescHex = Instance.new("TextLabel", CardHexagon)
 DescHex.Size = UDim2.new(1, -10, 0, 32)
 DescHex.Position = UDim2.new(0, 0, 0, 18)
 DescHex.BackgroundTransparency = 1
-DescHex.Text = "Rd4X, Multilingual and multifunctional Client, offering a variety of options for you ^<^1>^."
+DescHex.Text = "O RD4X foi desenvolvido para divertir os jogadores. FUNÇÕES DA ABA VIP/ADMIN FUNCIONA APENAS PARA QUEM TAMBÉM USA O HUB."
 DescHex.TextColor3 = COR_TEXTO_CINZA
 DescHex.TextSize = 9
 DescHex.Font = Enum.Font.Gotham
@@ -1055,7 +1055,7 @@ padCR.PaddingRight = UDim.new(0, 8)
 local TitleRelease = Instance.new("TextLabel", CardRelease)
 TitleRelease.Size = UDim2.new(1, -10, 0, 16)
 TitleRelease.BackgroundTransparency = 1
-TitleRelease.Text = "New Release (🔥 Mistake Upd. V):"
+TitleRelease.Text = "🔥 Lançamento 🇧🇷 = Versão 1.0"
 TitleRelease.TextColor3 = COR_TEXTO
 TitleRelease.TextSize = 11
 TitleRelease.Font = Enum.Font.GothamBold
@@ -1066,7 +1066,7 @@ local DescRelease = Instance.new("TextLabel", CardRelease)
 DescRelease.Size = UDim2.new(1, -10, 0, 94)
 DescRelease.Position = UDim2.new(0, 0, 0, 20)
 DescRelease.BackgroundTransparency = 1
-DescRelease.Text = "News: Improved performance, Anti-Fling aprimorado, Fly gui, Fly car, Ban & Kick System, Cam Player, Backrooms, Ragdoll, Sentar na cabeça, Troll Giro, Anti-Lag, Noclip, ESP, Proteções e muito mais."
+DescRelease.Text = "A compra do Admin estará disponível após 2.000 Execuções. Isso serve para evitar a compra do Admin e não ter em quem usar."
 DescRelease.TextColor3 = COR_TEXTO_CINZA
 DescRelease.TextSize = 9
 DescRelease.Font = Enum.Font.Gotham
@@ -1104,7 +1104,7 @@ local DescCI2 = Instance.new("TextLabel", CardInfo2)
 DescCI2.Size = UDim2.new(1, -10, 0, 32)
 DescCI2.Position = UDim2.new(0, 0, 0, 18)
 DescCI2.BackgroundTransparency = 1
-DescCI2.Text = "Owner/Dev: J. Epstein\nColabs: Rd4X Team Oficial"
+DescCI2.Text = "Dev / Owner: J. Epstein\nEquipe: Rd4X Team Oficial"
 DescCI2.TextColor3 = COR_TEXTO_CINZA
 DescCI2.TextSize = 9
 DescCI2.Font = Enum.Font.Gotham
@@ -1138,6 +1138,291 @@ end)
 BotaoReconectar.MouseButton1Click:Connect(function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
 end)
+    conteudo.BorderSizePixel = 0
+    conteudo.ScrollBarThickness = 2
+    conteudo.ScrollBarImageColor3 = COR_BORDA
+    conteudo.CanvasSize = UDim2.new(0, 0, 0, 0)
+    conteudo.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    conteudo.ZIndex = 5
+
+    local layoutConteudo = Instance.new("UIListLayout", conteudo)
+    layoutConteudo.Padding = UDim.new(0, 6)
+    layoutConteudo.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function addItem(texto)
+        local item = Instance.new("TextLabel", conteudo)
+        item.Size = UDim2.new(1, -4, 0, 20)
+        item.BackgroundTransparency = 1
+        item.Text = "• " .. texto
+        item.TextColor3 = COR_TEXTO
+        item.TextSize = 10
+        item.Font = Enum.Font.Gotham
+        item.TextXAlignment = Enum.TextXAlignment.Left
+        item.TextWrapped = true
+        item.ZIndex = 6
+    end
+        -- ==========================================================
+-- 🔔 POPUP DE ATUALIZAÇÃO (com bolhas + cor do hub)
+-- ==========================================================
+task.spawn(function()
+    task.wait(1)
+
+    -- Container principal
+    local popup = Instance.new("Frame", ScreenGui)
+    popup.Name = "Rd4X_PopupAtualizacao"
+    popup.Size = UDim2.new(0, 340, 0, 230)
+    popup.Position = UDim2.new(0.5, -170, 0.5, -115)
+    popup.BackgroundColor3 = COR_FUNDO               -- 👈 cor do hub
+    popup.BackgroundTransparency = TRANSP_FUNDO      -- 👈 transparência do hub
+    popup.BorderSizePixel = 0
+    popup.ClipsDescendants = true
+    popup.ZIndex = 10000
+
+    local cPopup = Instance.new("UICorner", popup)
+    cPopup.CornerRadius = UDim.new(0, 10)
+
+    local sPopup = Instance.new("UIStroke", popup)
+    sPopup.Color = COR_BORDA                         -- 👈 borda do hub
+    sPopup.Thickness = 1.5
+    sPopup.Transparency = 0.3
+
+    -- 🫧 BOLHAS SUBINDO DENTRO DO POPUP
+    local bolhasPopup = Instance.new("Frame", popup)
+    bolhasPopup.Name = "BolhasPopup"
+    bolhasPopup.Size = UDim2.new(1, 0, 1, 0)
+    bolhasPopup.BackgroundTransparency = 1
+    bolhasPopup.ClipsDescendants = true
+    bolhasPopup.ZIndex = 0
+    bolhasPopup.Active = false
+
+    local popupAberto = true
+
+    local function criarBolhaPopup()
+        if not popupAberto or not bolhasPopup.Parent then return end
+
+        local tam = math.random(5, 12)
+        local bolha = Instance.new("Frame", bolhasPopup)
+        bolha.Size = UDim2.new(0, tam, 0, tam)
+        bolha.Position = UDim2.new(math.random() * 0.95, 0, 1, 10)
+        bolha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        bolha.BackgroundTransparency = math.random(20, 45) / 100
+        bolha.BorderSizePixel = 0
+        bolha.ZIndex = 0
+
+        local c = Instance.new("UICorner", bolha)
+        c.CornerRadius = UDim.new(1, 0)
+
+        local stroke = Instance.new("UIStroke", bolha)
+        stroke.Color = Color3.fromRGB(255, 255, 255)
+        stroke.Thickness = 1.2
+        stroke.Transparency = 0.4
+
+        local duracao = math.random(5, 9)
+        local driftX = math.random(-50, 50)
+
+        local tween = TweenService:Create(bolha, TweenInfo.new(duracao, Enum.EasingStyle.Linear), {
+            Position = UDim2.new(bolha.Position.X.Scale, driftX, 0, -20),
+            BackgroundTransparency = 1
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            if bolha and bolha.Parent then bolha:Destroy() end
+        end)
+    end
+
+    task.spawn(function()
+        while popupAberto and bolhasPopup.Parent do
+            criarBolhaPopup()
+            task.wait(math.random(10, 35) / 100)
+        end
+    end)
+
+    -- ───── Header ─────
+    local header = Instance.new("Frame", popup)
+    header.Size = UDim2.new(1, 0, 0, 40)
+    header.BackgroundTransparency = 1
+    header.ZIndex = 5
+
+    local icone = Instance.new("TextLabel", header)
+    icone.Size = UDim2.new(0, 24, 0, 24)
+    icone.Position = UDim2.new(0, 12, 0, 8)
+    icone.BackgroundTransparency = 1
+    icone.Text = "🔔"
+    icone.TextSize = 16
+    icone.ZIndex = 6
+
+    local titulo = Instance.new("TextLabel", header)
+    titulo.Size = UDim2.new(1, -80, 1, 0)
+    titulo.Position = UDim2.new(0, 42, 0, 0)
+    titulo.BackgroundTransparency = 0.5
+    titulo.Text = "Lançamento!!!"
+    titulo.TextColor3 = COR_TEXTO                 -- 👈 cor do texto (branco)
+    titulo.TextSize = 13
+    titulo.Font = Enum.Font.GothamBold
+    titulo.TextXAlignment = Enum.TextXAlignment.Left
+    titulo.ZIndex = 6
+
+    -- Botão fechar (X)
+    local fechar = Instance.new("TextButton", header)
+    fechar.Size = UDim2.new(0, 24, 0, 24)
+    fechar.Position = UDim2.new(1, -32, 0, 8)
+    fechar.BackgroundTransparency = 0.5
+    fechar.Text = "✕"
+    fechar.TextColor3 = COR_TEXTO_CINZA
+    fechar.TextSize = 14
+    fechar.Font = Enum.Font.GothamBold
+    fechar.ZIndex = 6
+    fechar.AutoButtonColor = false
+
+    fechar.MouseEnter:Connect(function()
+        fechar.TextColor3 = COR_TEXTO
+    end)
+    fechar.MouseLeave:Connect(function()
+        fechar.TextColor3 = COR_TEXTO_CINZA
+    end)
+
+    -- Linha separadora
+    local separador = Instance.new("Frame", popup)
+    separador.Size = UDim2.new(1, -24, 0, 1)
+    separador.Position = UDim2.new(0, 12, 0, 42)
+    separador.BackgroundColor3 = COR_BORDA
+    separador.BorderSizePixel = 0
+    separador.ZIndex = 5
+
+    -- Área do conteúdo
+    local conteudo = Instance.new("ScrollingFrame", popup)
+    conteudo.Size = UDim2.new(1, -24, 1, -120)
+    conteudo.Position = UDim2.new(0, 12, 0, 50)
+    conteudo.BackgroundTransparency = 0.5
+    conteudo.BorderSizePixel = 0
+    conteudo.ScrollBarThickness = 2
+    conteudo.ScrollBarImageColor3 = COR_BORDA
+    conteudo.CanvasSize = UDim2.new(0, 0, 0, 0)
+    conteudo.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    conteudo.ZIndex = 5
+
+    local layoutConteudo = Instance.new("UIListLayout", conteudo)
+    layoutConteudo.Padding = UDim.new(0, 6)
+    layoutConteudo.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function addItem(texto)
+        local item = Instance.new("TextLabel", conteudo)
+        item.Size = UDim2.new(1, -4, 0, 20)
+        item.BackgroundTransparency = 0.5
+        item.Text = "• " .. texto
+        item.TextColor3 = COR_TEXTO
+        item.TextSize = 10
+        item.Font = Enum.Font.Gotham
+        item.TextXAlignment = Enum.TextXAlignment.Left
+        item.TextWrapped = true
+        item.ZIndex = 6
+    end
+
+    -- 👇 EDITE AQUI AS NOVIDADES
+    addItem("Boas Vindas!")
+    addItem("Está é a versão 1.0 Do Hub. Encontrar falhas pode ser normal.")
+    addItem("Reporte falhas no Discord")
+    addItem("Aproveite!")
+    addItem("...")
+    addItem("...")
+
+    -- Botão OK (mesma cor do hub, sem verde)
+    local botaoOk = Instance.new("TextButton", popup)
+    botaoOk.Size = UDim2.new(1, -24, 0, 30)
+    botaoOk.Position = UDim2.new(0, 12, 1, -42)
+    botaoOk.BackgroundColor3 = COR_SECUNDARIA
+    botaoOk.BackgroundTransparency = TRANSP_CARDS
+    botaoOk.BorderSizePixel = 0
+    botaoOk.Text = "Entendi!"
+    botaoOk.TextColor3 = COR_TEXTO
+    botaoOk.TextSize = 11
+    botaoOk.Font = Enum.Font.GothamBold
+    botaoOk.AutoButtonColor = false
+    botaoOk.ZIndex = 6
+
+    local cBtn = Instance.new("UICorner", botaoOk)
+    cBtn.CornerRadius = UDim.new(0, 6)
+
+    botaoOk.MouseEnter:Connect(function()
+        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = 0.25}):Play()
+    end)
+    botaoOk.MouseLeave:Connect(function()
+        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = TRANSP_CARDS}):Play()
+    end)
+
+    -- Função fechar
+    local function fecharPopup()
+        popupAberto = false
+        TweenService:Create(popup, TweenInfo.new(0.3), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            BackgroundTransparency = 1
+        }):Play()
+
+        for _, obj in ipairs(popup:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                elseif obj:IsA("Frame") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+                elseif obj:IsA("UIStroke") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {Transparency = 1}):Play()
+                end
+            end)
+        end
+
+        task.wait(0.35)
+        popup:Destroy()
+    end
+
+    fechar.MouseButton1Click:Connect(fecharPopup)
+    botaoOk.MouseButton1Click:Connect(fecharPopup)
+
+    -- Animação de entrada
+    popup.Size = UDim2.new(0, 0, 0, 0)
+    popup.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TweenService:Create(popup, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 340, 0, 230),
+        Position = UDim2.new(0.5, -170, 0.5, -115)
+    }):Play()
+end)
+        for _, obj in ipairs(popup:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                elseif obj:IsA("Frame") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+                elseif obj:IsA("UIStroke") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {Transparency = 1}):Play()
+                end
+            end)
+        end
+
+        task.wait(0.35)
+        popup:Destroy()
+    end
+
+    fechar.MouseButton1Click:Connect(fecharPopup)
+    botaoOk.MouseButton1Click:Connect(fecharPopup)
+
+    -- Animação de entrada
+    popup.Size = UDim2.new(0, 0, 0, 0)
+    popup.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TweenService:Create(popup, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 340, 0, 230),
+        Position = UDim2.new(0.5, -170, 0.5, -115)
+    }):Play()
+end)
+local tamanhoFinal = MainFrame.Size
+local posFinal = MainFrame.Position
+
+MainFrame.Size = UDim2.new(0, 0, 0, 0)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = tamanhoFinal,
+    Position = posFinal
+}):Play()
 
 --------------------------------------------------------------------------------
 -- ABA ADMIN
@@ -1902,6 +2187,23 @@ local function tocarMusicaNaBoombox(id)
         end
     end)
 end
+-- ==========================================================
+-- 📝 ALTERAR BIO (Welcome, NomeDoJogador)
+-- ==========================================================
+UI.Button(Tabs.Player, {
+    Name = "📝 Aplicar Bio (Welcome)",
+    Callback = function()
+        local textoBio = "Welcome, " .. LocalPlayer.Name
+        pcall(function()
+            local remote = game:GetService("ReplicatedStorage").RE["1RPNam1eTex1t"]
+            if remote then
+                remote:FireServer("RolePlayBio", textoBio)
+                Notify("Bio", "Alterada: " .. textoBio, 3)
+            end
+        end)
+    end
+})
+
 
 UI.Input(Tabs.Musicas, { Name = "Digite o ID", CurrentValue = "", PlaceholderText = "Cole o ID...", Callback = function(id) idMusicaDigitado = id end })
 UI.Button(Tabs.Musicas, { Name = "Tocar música", Callback = function()
@@ -1909,11 +2211,25 @@ UI.Button(Tabs.Musicas, { Name = "Tocar música", Callback = function()
 end})
 
 local listaMusicasPadrao = {
-    {Name = "🎵 Phonk 1", ID = "1849767232"},
-    {Name = "🎵 Phonk 2", ID = "1424177890"},
-    {Name = "🎵 Funk 1", ID = "9047119231"},
-    {Name = "🎵 Funk 2", ID = "1423760458"},
-    {Name = "🎵 Hit Viral", ID = "1838927190"}
+    {Name = "◾ Funks", ID = "1838927190"},
+    {Name = "🔥 Piranha", ID = "103811087853875"},
+    {Name = "🔥 Os Menor ", ID = "126719632721905"},
+    {Name = "🔥 Vai caindo c a bct", ID = "74967642581893"},
+    {Name = "🔥 Facada", ID = "81730477878065"},
+    {Name = "🔥 Lacs", ID = "121544291272731"},
+    {Name = "🔥 Funk", ID = "74206017407052"},
+    {Name = "🔥 Onda do Birimbau", ID = "90728144562197"},
+    {Name = "🔥 Piseiro Bahiano", ID = "111425053457342"},
+    {Name = "🔥 Cheiro", ID = "102430799050444"},
+    {Name = "🔥 Afrozada", ID = "116257708415048"},
+    {Name = "🔥 Sequência de papapey", ID = "127060465281063"},
+    {Name = "◾ Forrós ¬", ID = "0"},
+    {Name = "🔥 Uma botadinha amr", ID = "84624301411909"},
+    {Name = "🔥 Eu me apaixonei", ID = "139414982330352"},
+    {Name = "🔥 Pisada Xl", ID = "70508008395270"},
+    {Name = "🔥 Notificação preferida", ID = "90137280531474"},
+    {Name = "🔥 Só fé ", ID = "139128878060651"},
+    {Name = "🔥 Desça daí seu corno", ID = "1197388789221996"}
 }
 
 for _, mus in ipairs(listaMusicasPadrao) do
@@ -2036,7 +2352,6 @@ UI.Button(Tabs.Outros, { Name = "🎨 Simplificar Gráficos (Irreversível)", Ca
     end)
     Notify("Outros", "Gráficos simplificados!", 2)
 end})
-
 --------------------------------------------------------------------------------
 -- ABA PROTEÇÃO
 --------------------------------------------------------------------------------
@@ -2285,175 +2600,4 @@ task.spawn(function()
         end
     end)
 
-    -- ───── Header ─────
-    local header = Instance.new("Frame", popup)
-    header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundTransparency = 1
-    header.ZIndex = 5
-
-    local icone = Instance.new("TextLabel", header)
-    icone.Size = UDim2.new(0, 24, 0, 24)
-    icone.Position = UDim2.new(0, 12, 0, 8)
-    icone.BackgroundTransparency = 1
-    icone.Text = "🔔"
-    icone.TextSize = 16
-    icone.ZIndex = 6
-
-    local titulo = Instance.new("TextLabel", header)
-    titulo.Size = UDim2.new(1, -80, 1, 0)
-    titulo.Position = UDim2.new(0, 42, 0, 0)
-    titulo.BackgroundTransparency = 1
-    titulo.Text = "Update!"
-    titulo.TextColor3 = COR_TEXTO                 -- 👈 cor do texto (branco)
-    titulo.TextSize = 13
-    titulo.Font = Enum.Font.GothamBold
-    titulo.TextXAlignment = Enum.TextXAlignment.Left
-    titulo.ZIndex = 6
-
-    -- Botão fechar (X)
-    local fechar = Instance.new("TextButton", header)
-    fechar.Size = UDim2.new(0, 24, 0, 24)
-    fechar.Position = UDim2.new(1, -32, 0, 8)
-    fechar.BackgroundTransparency = 1
-    fechar.Text = "✕"
-    fechar.TextColor3 = COR_TEXTO_CINZA
-    fechar.TextSize = 14
-    fechar.Font = Enum.Font.GothamBold
-    fechar.ZIndex = 6
-    fechar.AutoButtonColor = false
-
-    fechar.MouseEnter:Connect(function()
-        fechar.TextColor3 = COR_TEXTO
-    end)
-    fechar.MouseLeave:Connect(function()
-        fechar.TextColor3 = COR_TEXTO_CINZA
-    end)
-
-    -- Linha separadora
-    local separador = Instance.new("Frame", popup)
-    separador.Size = UDim2.new(1, -24, 0, 1)
-    separador.Position = UDim2.new(0, 12, 0, 42)
-    separador.BackgroundColor3 = COR_BORDA
-    separador.BorderSizePixel = 0
-    separador.ZIndex = 5
-
-    -- Área do conteúdo
-    local conteudo = Instance.new("ScrollingFrame", popup)
-    conteudo.Size = UDim2.new(1, -24, 1, -120)
-    conteudo.Position = UDim2.new(0, 12, 0, 50)
-    conteudo.BackgroundTransparency = 1
-    conteudo.BorderSizePixel = 0
-    conteudo.ScrollBarThickness = 2
-    conteudo.ScrollBarImageColor3 = COR_BORDA
-    conteudo.CanvasSize = UDim2.new(0, 0, 0, 0)
-    conteudo.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    conteudo.ZIndex = 5
-
-    local layoutConteudo = Instance.new("UIListLayout", conteudo)
-    layoutConteudo.Padding = UDim.new(0, 6)
-    layoutConteudo.SortOrder = Enum.SortOrder.LayoutOrder
-
-    local function addItem(texto)
-        local item = Instance.new("TextLabel", conteudo)
-        item.Size = UDim2.new(1, -4, 0, 20)
-        item.BackgroundTransparency = 1
-        item.Text = "• " .. texto
-        item.TextColor3 = COR_TEXTO
-        item.TextSize = 10
-        item.Font = Enum.Font.Gotham
-        item.TextXAlignment = Enum.TextXAlignment.Left
-        item.TextWrapped = true
-        item.ZIndex = 6
-    end
-
-    -- 👇 EDITE AQUI AS NOVIDADES
-    addItem("Muito obrigado por usar nosso Hub!")
-    addItem("Em breve adicionaremos mais coisas!")
-    addItem("Entre no nosso discord para ficar por dentro de tudo")
-
-    -- Botão OK (mesma cor do hub, sem verde)
-    local botaoOk = Instance.new("TextButton", popup)
-    botaoOk.Size = UDim2.new(1, -24, 0, 30)
-    botaoOk.Position = UDim2.new(0, 12, 1, -42)
-    botaoOk.BackgroundColor3 = COR_SECUNDARIA
-    botaoOk.BackgroundTransparency = TRANSP_CARDS
-    botaoOk.BorderSizePixel = 0
-    botaoOk.Text = "Entendi!"
-    botaoOk.TextColor3 = COR_TEXTO
-    botaoOk.TextSize = 11
-    botaoOk.Font = Enum.Font.GothamBold
-    botaoOk.AutoButtonColor = false
-    botaoOk.ZIndex = 6
-
-    local cBtn = Instance.new("UICorner", botaoOk)
-    cBtn.CornerRadius = UDim.new(0, 6)
-
-    botaoOk.MouseEnter:Connect(function()
-        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = 0.25}):Play()
-    end)
-    botaoOk.MouseLeave:Connect(function()
-        TweenService:Create(botaoOk, TweenInfo.new(0.15), {BackgroundTransparency = TRANSP_CARDS}):Play()
-    end)
-
-    -- Função fechar
-    local function fecharPopup()
-        popupAberto = false
-        TweenService:Create(popup, TweenInfo.new(0.3), {
-            Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, 0, 0.5, 0),
-            BackgroundTransparency = 1
-        }):Play()
-
-        for _, obj in ipairs(popup:GetDescendants()) do
-            pcall(function()
-                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-                elseif obj:IsA("Frame") then
-                    TweenService:Create(obj, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-                elseif obj:IsA("UIStroke") then
-                    TweenService:Create(obj, TweenInfo.new(0.3), {Transparency = 1}):Play()
-                end
-            end)
-        end
-
-        task.wait(0.35)
-        popup:Destroy()
-    end
-
-    fechar.MouseButton1Click:Connect(fecharPopup)
-    botaoOk.MouseButton1Click:Connect(fecharPopup)
-
-    -- Animação de entrada
-    popup.Size = UDim2.new(0, 0, 0, 0)
-    popup.Position = UDim2.new(0.5, 0, 0.5, 0)
-    TweenService:Create(popup, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 340, 0, 230),
-        Position = UDim2.new(0.5, -170, 0.5, -115)
-    }):Play()
-end)
-local tamanhoFinal = MainFrame.Size
-local posFinal = MainFrame.Position
-
-MainFrame.Size = UDim2.new(0, 0, 0, 0)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-
-TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = tamanhoFinal,
-    Position = posFinal
-}):Play()
--- ==========================================================
--- 📝 ALTERAR BIO (Welcome, NomeDoJogador)
--- ==========================================================
-UI.Button(Tabs.Player, {
-    Name = "📝 Aplicar Bio (Welcome)",
-    Callback = function()
-        local textoBio = "Welcome, " .. LocalPlayer.Name
-        pcall(function()
-            local remote = game:GetService("ReplicatedStorage").RE["1RPNam1eTex1t"]
-            if remote then
-                remote:FireServer("RolePlayBio", textoBio)
-                Notify("Bio", "Alterada: " .. textoBio, 3)
-            end
-        end)
-    end
-})
+    
