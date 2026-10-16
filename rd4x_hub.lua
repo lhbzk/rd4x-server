@@ -3463,7 +3463,7 @@ Notify("RD4X Hub", "Interface carregada com sucesso!", 4)
 -- 🎵 MÚSICA DE FUNDO
 -- ==========================================================
 _G.RD4X_MusicaFundo = Instance.new("Sound", SoundService)
-_G.RD4X_MusicaFundo.SoundId = "rbxassetid://83894877"
+_G.RD4X_MusicaFundo.SoundId = "rbxassetid://134959834418523"
 _G.RD4X_MusicaFundo.Volume = 0.15
 _G.RD4X_MusicaFundo.Looped = true
 _G.RD4X_MusicaFundo:Play()
