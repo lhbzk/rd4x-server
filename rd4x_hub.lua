@@ -166,6 +166,122 @@ MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.ZIndex = 1
 MainFrame.Visible = false
+-- ==========================================================
+-- 🎬 TELA DE CARREGAMENTO
+-- ==========================================================
+if CoreGui:FindFirstChild("RD4X_Loading") then
+    CoreGui.RD4X_Loading:Destroy()
+end
+
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "RD4X_Loading"
+loadingGui.ResetOnSpawn = false
+loadingGui.DisplayOrder = 99999
+loadingGui.IgnoreGuiInset = true
+loadingGui.Parent = CoreGui
+
+local bgLoad = Instance.new("Frame", loadingGui)
+bgLoad.Size = UDim2.new(1, 0, 1, 0)
+bgLoad.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+bgLoad.BorderSizePixel = 0
+
+local container = Instance.new("Frame", bgLoad)
+container.Size = UDim2.new(0, 300, 0, 100)
+container.Position = UDim2.new(0.5, -150, 0.5, -50)
+container.BackgroundTransparency = 1
+
+local icone = Instance.new("ImageLabel", container)
+icone.Size = UDim2.new(0, 60, 0, 60)
+icone.Position = UDim2.new(0.5, -30, 0, 0)
+icone.BackgroundTransparency = 1
+icone.Image = "rbxassetid://109276734890323"
+icone.ScaleType = Enum.ScaleType.Fit
+
+local titulo = Instance.new("TextLabel", container)
+titulo.Size = UDim2.new(1, 0, 0, 20)
+titulo.Position = UDim2.new(0, 0, 0, 65)
+titulo.BackgroundTransparency = 1
+titulo.Text = "Rd4X Hub"
+titulo.TextColor3 = COR_TEXTO
+titulo.TextSize = 14
+titulo.Font = Enum.Font.GothamBold
+
+local status = Instance.new("TextLabel", container)
+status.Size = UDim2.new(1, 0, 0, 16)
+status.Position = UDim2.new(0, 0, 0, 85)
+status.BackgroundTransparency = 1
+status.Text = "Carregando..."
+status.TextColor3 = COR_TEXTO_CINZA
+status.TextSize = 10
+status.Font = Enum.Font.Gotham
+
+local barBg = Instance.new("Frame", bgLoad)
+barBg.Size = UDim2.new(0, 240, 0, 6)
+barBg.Position = UDim2.new(0.5, -120, 0.5, 80)
+barBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+barBg.BorderSizePixel = 0
+
+local cBg = Instance.new("UICorner", barBg)
+cBg.CornerRadius = UDim.new(1, 0)
+
+local barra = Instance.new("Frame", barBg)
+barra.Size = UDim2.new(0, 0, 1, 0)
+barra.BackgroundColor3 = COR_VERDE
+barra.BorderSizePixel = 0
+
+local cB = Instance.new("UICorner", barra)
+cB.CornerRadius = UDim.new(1, 0)
+
+task.spawn(function()
+    while bgLoad.Parent do
+        TweenService:Create(icone, TweenInfo.new(0.8), {Size = UDim2.new(0, 70, 0, 70), Position = UDim2.new(0.5, -35, 0, -5)}):Play()
+        task.wait(0.8)
+        TweenService:Create(icone, TweenInfo.new(0.8), {Size = UDim2.new(0, 60, 0, 60), Position = UDim2.new(0.5, -30, 0, 0)}):Play()
+        task.wait(0.8)
+    end
+end)
+
+TweenService:Create(barra, TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    Size = UDim2.new(1, 0, 1, 0)
+}):Play()
+
+task.spawn(function()
+    local mensagens = {
+        "Carregando módulos...",
+        "Verificando atualizações...",
+        "Preparando interface...",
+        "Quase pronto...",
+    }
+    for i, msg in ipairs(mensagens) do
+        status.Text = msg
+        task.wait(0.5)
+    end
+end)
+
+task.delay(2.2, function()
+    TweenService:Create(bgLoad, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(container, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(titulo, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+    TweenService:Create(status, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+    TweenService:Create(barBg, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(barra, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(icone, TweenInfo.new(0.4), {ImageTransparency = 1}):Play()
+    
+    task.wait(0.4)
+    loadingGui:Destroy()
+    
+    -- ✅ MOSTRA O HUB COM ANIMAÇÃO
+    MainFrame.Visible = true
+    MainFrame.Size = UDim2.new(0, 0, 0, 0)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.BackgroundTransparency = 1
+    
+    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 560, 0, 400),
+        Position = UDim2.new(0.5, -280, 0.5, -200),
+        BackgroundTransparency = TRANSP_FUNDO
+    }):Play()
+end)
 local cornerMain = Instance.new("UICorner", MainFrame)
 cornerMain.CornerRadius = UDim.new(0, 10)
 
@@ -182,7 +298,7 @@ local alturaMinimizada = 38
 -- Botão flutuante abre o hub
 BotaoFlutuante.MouseButton1Click:Connect(function()
     BotaoFlutuante.Visible = false
-        MainFrame.Visible = false
+        MainFrame.Visible = true
 end)
 
 -- Dragging MainFrame
@@ -3312,138 +3428,4 @@ task.spawn(function()
     else
         warn("⚠️ Remote da Bio não encontrado")
     end
-end)
--- ==========================================================
--- 🎬 TELA DE CARREGAMENTO (espera antes de abrir o hub)
--- ==========================================================
-
--- Esconde o hub inicialmente
-MainFrame.Visible = false
-
--- Cria a tela de loading
-local loadingGui = Instance.new("ScreenGui")
-loadingGui.Name = "RD4X_Loading"
-loadingGui.ResetOnSpawn = false
-loadingGui.DisplayOrder = 99999
-loadingGui.IgnoreGuiInset = true
-loadingGui.Parent = CoreGui
-
-local bgLoad = Instance.new("Frame", loadingGui)
-bgLoad.Size = UDim2.new(1, 0, 1, 0)
-bgLoad.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
-bgLoad.BackgroundTransparency = 0
-bgLoad.BorderSizePixel = 0
-
--- Container central
-local container = Instance.new("Frame", bgLoad)
-container.Size = UDim2.new(0, 300, 0, 100)
-container.Position = UDim2.new(0.5, -150, 0.5, -50)
-container.BackgroundTransparency = 1
-
--- Ícone (logo)
-local icone = Instance.new("ImageLabel", container)
-icone.Size = UDim2.new(0, 60, 0, 60)
-icone.Position = UDim2.new(0.5, -30, 0, 0)
-icone.BackgroundTransparency = 1
-icone.Image = "rbxassetid://109276734890323"
-icone.ScaleType = Enum.ScaleType.Fit
-
-local cIco = Instance.new("UICorner", icone)
-cIco.CornerRadius = UDim.new(1, 0)
-
--- Título
-local titulo = Instance.new("TextLabel", container)
-titulo.Size = UDim2.new(1, 0, 0, 20)
-titulo.Position = UDim2.new(0, 0, 0, 65)
-titulo.BackgroundTransparency = 1
-titulo.Text = "Rd4X Hub"
-titulo.TextColor3 = COR_TEXTO
-titulo.TextSize = 14
-titulo.Font = Enum.Font.GothamBold
-
--- Texto de status
-local status = Instance.new("TextLabel", container)
-status.Size = UDim2.new(1, 0, 0, 16)
-status.Position = UDim2.new(0, 0, 0, 85)
-status.BackgroundTransparency = 1
-status.Text = "Carregando..."
-status.TextColor3 = COR_TEXTO_CINZA
-status.TextSize = 10
-status.Font = Enum.Font.Gotham
-
--- Barra de fundo
-local barBg = Instance.new("Frame", bgLoad)
-barBg.Size = UDim2.new(0, 240, 0, 6)
-barBg.Position = UDim2.new(0.5, -120, 0.5, 80)
-barBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-barBg.BorderSizePixel = 0
-
-local cBg = Instance.new("UICorner", barBg)
-cBg.CornerRadius = UDim.new(1, 0)
-
--- Barra de progresso
-local barra = Instance.new("Frame", barBg)
-barra.Size = UDim2.new(0, 0, 1, 0)
-barra.BackgroundColor3 = COR_VERDE
-barra.BorderSizePixel = 0
-
-local cB = Instance.new("UICorner", barra)
-cB.CornerRadius = UDim.new(1, 0)
-
--- Animação do ícone (pulsa)
-task.spawn(function()
-    while bgLoad.Parent do
-        TweenService:Create(icone, TweenInfo.new(0.8), {Size = UDim2.new(0, 70, 0, 70), Position = UDim2.new(0.5, -35, 0, -5)}):Play()
-        task.wait(0.8)
-        TweenService:Create(icone, TweenInfo.new(0.8), {Size = UDim2.new(0, 60, 0, 60), Position = UDim2.new(0.5, -30, 0, 0)}):Play()
-        task.wait(0.8)
-    end
-end)
-
--- Enche a barra
-TweenService:Create(barra, TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    Size = UDim2.new(1, 0, 1, 0)
-}):Play()
-
--- Atualiza o texto durante o loading
-task.spawn(function()
-    local mensagens = {
-        "Carregando módulos...",
-        "Verificando atualizações...",
-        "Preparando interface...",
-        "Quase pronto...",
-    }
-    for i, msg in ipairs(mensagens) do
-        status.Text = msg
-        task.wait(0.5)
-    end
-end)
-
--- Depois de 2.2 segundos, remove o loading e mostra o hub
-task.delay(2.2, function()
-    -- Fade out
-    TweenService:Create(bgLoad, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(container, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(titulo, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-    TweenService:Create(status, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-    TweenService:Create(barBg, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(barra, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(icone, TweenInfo.new(0.4), {ImageTransparency = 1}):Play()
-    
-    task.wait(0.4)
-    
-    -- Remove o loading
-    loadingGui:Destroy()
-    
-    -- MOSTRA O HUB COM ANIMAÇÃO
-    MainFrame.Visible = true
-    MainFrame.Size = UDim2.new(0, 0, 0, 0)
-    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.BackgroundTransparency = 1
-    
-    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 560, 0, 400),
-        Position = UDim2.new(0.5, -280, 0.5, -200),
-        BackgroundTransparency = TRANSP_FUNDO
-    }):Play()
 end)
