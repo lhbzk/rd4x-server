@@ -419,7 +419,7 @@ local UserCredit = Instance.new("TextLabel", Header)
 UserCredit.Size = UDim2.new(0, 200, 0, 38)
 UserCredit.Position = UDim2.new(1, -250, 0, 0)
 UserCredit.BackgroundTransparency = 1
-UserCredit.Text = "By Rd4X Team"
+UserCredit.Text = "By Rd4X Team and J. Epstein"
 UserCredit.TextColor3 = COR_VERDE
 UserCredit.TextSize = 9
 UserCredit.Font = Enum.Font.Gotham
@@ -1026,9 +1026,18 @@ local Tabs = {
     Teleportes = CreateTab("Teleportes"),
     Config = CreateTab("Config")
 }
-
+})
 ShowTab("Informações")
-
+UI.Paragraph(Tabs.SomAll, {
+    Title = "⚠️ Aviso do RD4X!",
+    Content = "Aguarde atualizações, em breve estará disponível!",
+    Height = 55
+})
+UI.Paragraph(Tabs.Skins, {
+    Title = "⚠️ Aviso do RD4X!",
+    Content = "Aguarde atualizações, em breve estará disponível!",
+    Height = 55
+})
 --------------------------------------------------------------------------------
 -- ABA INFORMAÇÕES
 --------------------------------------------------------------------------------
@@ -1108,7 +1117,7 @@ BotaoCopyLink.MouseLeave:Connect(function()
     TweenService:Create(BotaoCopyLink, TweenInfo.new(0.15), {BackgroundTransparency = TRANSP_BOTAO_VERDE}):Play()
 end)
 BotaoCopyLink.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard("https://discord.gg/Eh8ga7z55") end)
+    pcall(function() setclipboard("https://discord.gg/SsPh5Eyr9Q") end)
     Notify("RD4X", "Link do Discord copiado!", 3)
 end)
 
@@ -1139,7 +1148,7 @@ padCH.PaddingRight = UDim.new(0, 8)
 local TitleHex = Instance.new("TextLabel", CardHexagon)
 TitleHex.Size = UDim2.new(1, -10, 0, 16)
 TitleHex.BackgroundTransparency = 1
-TitleHex.Text = "Rd4X Hub For Brookhaven RP"
+TitleHex.Text = "Rd4X Hub ._"
 TitleHex.TextColor3 = COR_TEXTO
 TitleHex.TextSize = 11
 TitleHex.Font = Enum.Font.GothamBold
@@ -1226,7 +1235,7 @@ local DescCI2 = Instance.new("TextLabel", CardInfo2)
 DescCI2.Size = UDim2.new(1, -10, 0, 32)
 DescCI2.Position = UDim2.new(0, 0, 0, 18)
 DescCI2.BackgroundTransparency = 1
-DescCI2.Text = "Dev / Owner = J. Epstein/nEquipe = Rd4X Team oficial"
+DescCI2.Text = "Dev / Owner = J. Epstein\nEquipe = Rd4X Team oficial"
 DescCI2.TextColor3 = COR_TEXTO_CINZA
 DescCI2.TextSize = 9
 DescCI2.Font = Enum.Font.Gotham
@@ -1391,7 +1400,6 @@ UI.Button(Tabs.Outros, {
     Name = "🎥 Camera Noclip",
     Callback = function()
         pcall(function() LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam end)
-        Notify("Outros", "Câmera Noclip ativada!", 2)
     end
 })
 
@@ -1414,9 +1422,6 @@ UI.Button(Tabs.Player, {
         if RPNameText then
             local texto = "Welcome, " .. LocalPlayer.Name
             RPNameText:FireServer("RolePlayBio", texto)
-            Notify("Bio", texto, 3)
-        else
-            Notify("Erro", "Remote da Bio não encontrado", 3)
         end
     end
 })
@@ -1436,9 +1441,6 @@ UI.Button(Tabs.Player, {
         atualizarBioRemote()
         if RPNameText and bioCustom ~= "" then
             RPNameText:FireServer("RolePlayBio", bioCustom)
-            Notify("Bio", "Aplicada: " .. bioCustom, 3)
-        else
-            Notify("Aviso", "Digite um texto primeiro", 2)
         end
     end
 })
@@ -1475,8 +1477,7 @@ UI.Button(Tabs.Servidor, { Name = "🔄 Atualizar Lista", Callback = function()
     local novaLista = {}
     for _, p in ipairs(Players:GetPlayers()) do table.insert(novaLista, p.Name) end
     listaJogadoresServidor = novaLista
-    dropdownServidorList:Refresh(listaJogadoresServidor)
-    Notify("Servidor", "Lista atualizada!", 2)
+    dropdownServidorList:Refresh(Lista Jogadores Servidor)
 end})
 
 UI.Button(Tabs.Servidor, { Name = "👁️ Ver Câmera", Callback = function()
@@ -1484,7 +1485,6 @@ UI.Button(Tabs.Servidor, { Name = "👁️ Ver Câmera", Callback = function()
     if alvo and alvo.Character and alvo.Character:FindFirstChild("Head") then
         camOriginalServidor = Camera.CFrame
         Camera.CameraSubject = alvo.Character.Humanoid
-        Notify("Servidor", "Assistindo " .. alvo.Name, 2)
     end
 end})
 
@@ -1516,18 +1516,16 @@ UI.Button(Tabs.Servidor, { Name = "Sentar na cabeça", Callback = function()
                 end
             end)
         end)
-        Notify("Servidor", "Sentado na cabeça!", 2)
     end
 end})
 
 UI.Button(Tabs.Servidor, { Name = "Sair da cabeça", Callback = function()
     if conexaoSentarCabeca then conexaoSentarCabeca:Disconnect(); conexaoSentarCabeca = nil end
     pcall(function() LocalPlayer.Character.Humanoid.Sit = false end)
-    Notify("Servidor", "Saiu da cabeça.", 2)
 end})
 
 UI.Button(Tabs.Servidor, { Name = "🚪 Sair do Servidor", Callback = function()
-    LocalPlayer:Kick("Você saiu do servidor usando o RD4X Hub.")
+    LocalPlayer:Kick("Disconnected by Rd4X.")
 end})
 UI.Button(Tabs.Servidor, {
     Name = "🎯 Menu rápido TP",
@@ -1641,13 +1639,11 @@ local velocidadeCarroInput, forcaArrancadaInput = 50, 100
 UI.Input(Tabs.Carros, { Name = "Velocidade do Carro", CurrentValue = "50", PlaceholderText = "Velocidade...", Callback = function(v) velocidadeCarroInput = tonumber(v) or 50 end })
 UI.Button(Tabs.Carros, { Name = "Inserir Velocidade", Callback = function()
     pcall(function() LocalPlayer.Character.Humanoid.SeatPart.MaxSpeed = velocidadeCarroInput end)
-    Notify("Carros", "Velocidade aplicada!", 3)
 end})
 
 UI.Input(Tabs.Carros, { Name = "Força de Arrancada", CurrentValue = "100", PlaceholderText = "Força...", Callback = function(v) forcaArrancadaInput = tonumber(v) or 100 end })
 UI.Button(Tabs.Carros, { Name = "Definir Arrancada", Callback = function()
     pcall(function() LocalPlayer.Character.Humanoid.SeatPart.Torque = forcaArrancadaInput end)
-    Notify("Carros", "Arrancada aplicada!", 3)
 end})
 
 UI.Button(Tabs.Carros, { Name = "Carros Bloqueados (Dirigir qualquer)", Callback = function()
@@ -1656,7 +1652,6 @@ UI.Button(Tabs.Carros, { Name = "Carros Bloqueados (Dirigir qualquer)", Callback
             if v:IsA("VehicleSeat") then v.Disabled = false; v.Locked = false end
         end
     end)
-    Notify("Carros", "Desbloqueados!", 3)
 end})
 
 UI.Button(Tabs.Carros, { Name = "Fly Car", Callback = function()
@@ -1679,7 +1674,6 @@ UI.Toggle(Tabs.Carros, {
         rainbowCarAtivo = state
         
         if rainbowCarAtivo then
-            Notify("Carros", "Rainbow Car Ativado!", 2)
             task.spawn(function()
                 local RE = ReplicatedStorage:FindFirstChild("RE")
                 local carColorRemote = RE and RE:FindFirstChild("1Ca1rColo1r")
@@ -1714,8 +1708,6 @@ UI.Toggle(Tabs.Carros, {
                     task.wait(0.1)
                 end
             end)
-        else
-            Notify("Carros", "Rainbow Car Desativado", 2)
         end
     end
 })
@@ -1890,6 +1882,12 @@ UI.Button(Tabs.Carros, {
 -- ==========================================================
 -- 🔍 RASTREADOR / ESP DE COFRES
 -- ==========================================================
+UI.Paragraph(Tabs.Casas, {
+    Title = "⚠️ Aviso do RD4X!",
+    Content = "Aguarde atualizações, em breve estará disponível!",
+    Height = 55
+})
+--[[
 local espCofresAtivo = false
 
 UI.Toggle(Tabs.Casas, {
@@ -1997,6 +1995,7 @@ UI.Button(Tabs.Casas, { Name = "Desbanir auto", Callback = function()
     end)
     Notify("Casas", "Desbanido de todas as casas!", 2)
 end})
+--]]
 
 -- ==========================================================
 -- 🎵 SONS VIA PlayerToolEvent (ToolMusicText)
@@ -2175,8 +2174,8 @@ UI.Button(Tabs.Troll, {
 -- 2. BUS FLING & TRACKING 3D (VOID KILL)
 -- ----------------------------------------------------------
 UI.Paragraph(Tabs.Troll, {
-    Title = "🚌 Bus Fling & Tracking 3D",
-    Content = "Persegue o alvo girando o ônibus escolar em 3D até prendê-lo e jogá-lo no Void.",
+    Title = "🚌 Bus Void Kill",
+    Content = "Mata o Alvo Usando um Ônibus. Após matar o player, você será teleportado para a praça.",
     Height = 42
 })
 
@@ -2203,7 +2202,7 @@ local function encontrarOnibusDoJogador()
     return nil, nil
 end
 UI.Button(Tabs.Troll, {
-    Name = "🌪️ Iniciar Bus Fling 3D (Void Kill)",
+    Name = "🌪️ Iniciar Bus Kill (Void Kill)",
     Callback = function()
         if busAtivo then
             Notify("Troll", "Já tem um ônibus em perseguição!", 2)
@@ -2214,7 +2213,7 @@ UI.Button(Tabs.Troll, {
         local CarRemote = RE and RE:FindFirstChild("1Ca1r")
 
         if not CarRemote then
-            Notify("Erro", "Remote 1Ca1r não encontrado!", 3)
+            Notify("Erro", "Tente Novamente!", 3)
             return
         end
 
@@ -2227,7 +2226,7 @@ UI.Button(Tabs.Troll, {
         local rootAlvo = alvo.Character:FindFirstChild("HumanoidRootPart")
         local humanoidAlvo = alvo.Character:FindFirstChildOfClass("Humanoid")
         if not rootAlvo or not humanoidAlvo then
-            Notify("Troll", "Vítima sem personagem carregado!", 3)
+            Notify("Troll", "...!", 3)
             return
         end
 
@@ -2235,7 +2234,7 @@ UI.Button(Tabs.Troll, {
 
         -- 🚌 FORÇA O SPAWN DE UM NOVO ÔNIBUS ESCOLAR
         CarRemote:FireServer("PickingCar", "SchoolBus")
-        Notify("Bus Kill 3D", "Gerando novo ônibus no servidor...", 3)
+        Notify("Bus Kill", "Gerando novo ônibus no servidor...", 3)
 
         task.spawn(function()
             -- 🔍 Função que busca SEMPRE o ônibus gerado mais recentemente na superfície
@@ -2302,7 +2301,6 @@ UI.Button(Tabs.Troll, {
                         girando = false
                         if conexaoRender then conexaoRender:Disconnect() end
                         
-                        Notify("Bus Kill 3D", "💀 Vítima pego! Jogando no Void (-300)...", 3)
                         
                         -- 1. Manda o ônibus para Y = -300
                         onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -300, rootAlvo.Position.Z))
@@ -2314,7 +2312,7 @@ UI.Button(Tabs.Troll, {
                             if myHrp then myHrp.CFrame = CFrame.new(-26, 7, 1) end
                         end)
 
-                        Notify("Bus Kill 3D", "✨ Você voltou para a superfície!", 3)
+                        Notify("Bus Kill 3D", " Você voltou para a superfície!", 3)
                         
                         if conexaoSentouBus then conexaoSentouBus:Disconnect() end
                         busAtivo = false
@@ -2328,7 +2326,7 @@ UI.Button(Tabs.Troll, {
                     if conexaoSentouBus then conexaoSentouBus:Disconnect() end
                 end)
             else
-                Notify("Erro", "Falha ao gerar novo ônibus! Tente clicar novamente.", 3)
+                Notify("Erro", "Falha ao gerar novo ônibus! Tente novamente.", 3)
                 busAtivo = false
             end
         end)
@@ -2443,6 +2441,7 @@ UI.Toggle(Tabs.Troll, {
 -- ----------------------------------------------------------
 -- 5. FLING ALL PROPS
 -- ----------------------------------------------------------
+--[[
 UI.Button(Tabs.Troll, {
     Name = "🌀 Girar Todos os Props (Fling Props)",
     Callback = function()
@@ -2467,7 +2466,7 @@ UI.Button(Tabs.Troll, {
         Notify("Troll", "Props rotacionados!", 2)
     end
 })
-
+--]]
 -- ==========================================================
 -- 📦 SISTEMA DE PROPS COMPLETO (Kill / Bring / All)
 -- ==========================================================
@@ -2636,8 +2635,7 @@ end
 -- 5. Lógica do Kill Prop
 local function executarKillProp(nomeAlvo)
     local alvo = Players:FindFirstChild(nomeAlvo)
-    if not alvo or not alvo.Character then 
-        Notify("Props", "Alvo não encontrado!", 2)
+    if not alvo or not alvo.Character then
         return false 
     end
 
@@ -2671,8 +2669,6 @@ local function executarKillProp(nomeAlvo)
         return false
     end
 
-    Notify("Props", "⚡ Perseguindo " .. alvo.Name .. "...", 2)
-
     local sentou = false
     local tInicio = tick()
     local conexao
@@ -2700,7 +2696,6 @@ local function executarKillProp(nomeAlvo)
             moverProp(prop, CFrame.new(hrpAtual.Position.X, PROP_KILL_Y, hrpAtual.Position.Z))
             task.wait(0.8)
             deletarTodosProps()
-            Notify("Props", "💀 Alvo eliminado no Void!", 3)
         end
     end)
     return true
@@ -2709,8 +2704,7 @@ end
 -- 6. Lógica do Bring Prop
 local function executarBringProp(nomeAlvo)
     local alvo = Players:FindFirstChild(nomeAlvo)
-    if not alvo or not alvo.Character then 
-        Notify("Props", "Alvo não encontrado!", 2)
+    if not alvo or not alvo.Character then
         return false 
     end
 
@@ -2745,8 +2739,6 @@ local function executarBringProp(nomeAlvo)
         return false
     end
 
-    Notify("Props", "🧲 Puxando " .. alvo.Name .. "...", 2)
-
     local sentou = false
     local tInicio = tick()
     local conexao
@@ -2774,9 +2766,8 @@ local function executarBringProp(nomeAlvo)
             end
             task.wait(0.8)
             deletarTodosProps()
-            Notify("Props", "🎣 Alvo trazido com sucesso!", 3)
         end
-    end)
+    end
     return true
 end
 
@@ -2829,14 +2820,20 @@ UI.Button(Tabs.Troll, {
 --------------------------------------------------------------------------------
 -- ABA OUTROS
 --------------------------------------------------------------------------------
-UI.Button(Tabs.Outros, { Name = "⚡ Otimizar Hub (Irreversível)", Callback = function()
-    pcall(function()
-        for _, v in ipairs(Workspace:GetDescendants()) do
-            if v:IsA("BasePart") then v.CastShadow = false; v.Material = Enum.Material.SmoothPlastic end
-        end
-    end)
-    Notify("Outros", "Hub otimizado!", 2)
-end})
+UI.Button(Tabs.Outros, { 
+    Name = "⚡ Otimizar Hub (Irreversível)", 
+    Callback = function()
+        pcall(function()
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then 
+                    v.CastShadow = false 
+                    v.Material = Enum.Material.SmoothPlastic 
+                end
+            end
+        end)
+    end 
+})
+
 
 UI.Button(Tabs.Outros, { Name = "📉 Reduzir Lag (Irreversível)", Callback = function()
     pcall(function()
@@ -3052,8 +3049,8 @@ UI.Toggle(Tabs.Config, {
 
 -- ─── SEÇÃO: COR DO HUB ───
 UI.Paragraph(Tabs.Config, {
-    Title = "🌈 Cor do Hub",
-    Content = "Escolha a cor de destaque do hub.",
+    Title = "🌈 Cor Notify",
+    Content = "Escolha a cor das Notificações.",
     Height = 42
 })
 
@@ -3214,7 +3211,7 @@ UI.Button(Tabs.Config, {
 
 UI.Paragraph(Tabs.Config, {
     Title = "ℹ️ Sobre",
-    Content = "Rd4X Hub v1.0\nBy Rd4X Team Oficial\nDiscord: discord.gg/Eh8ga7z55",
+    Content = "Rd4X Hub v1.0\nBy Rd4X Team Oficial\nhttps://discord.gg/SsPh5Eyr9Q",
     Height = 70
 })
 -- ==========================================================
@@ -3269,12 +3266,195 @@ task.spawn(function()
             if remoteColor then remoteColor:FireServer("PickingRPNameColor", COR_VERMELHO) end
             task.wait(0.3)
             if LocalPlayer.UserId == MEU_ID_CREATOR then
-                if remoteName then remoteName:FireServer("RolePlayName", "👑 Rd4X Creator 👑") end
+                if remoteName then remoteName:FireServer("RolePlayName", "👑 Rd4X Creator◾") end
             else
-                if remoteName then remoteName:FireServer("RolePlayName", "🇧🇷 Rd4X User 🇧🇷 ") end
+                if remoteName then remoteName:FireServer("RolePlayName", "🇧🇷 Rd4X Hub◾") end
             end
         end
     end)
+end)
+-- ==========================================================
+-- 📢 POPUP DE ANÚNCIO (aparece ao abrir o hub)
+-- ==========================================================
+task.spawn(function()
+    task.wait(1)
+
+    -- Limpa se já existir
+    local oldAd = CoreGui:FindFirstChild("Rd4X_Ad_Anuncio")
+    if oldAd then oldAd:Destroy() end
+
+    -- ScreenGui separado (pra não conflitar ZIndex)
+    local AdGui = Instance.new("ScreenGui")
+    AdGui.Name = "Rd4X_Ad_Anuncio"
+    AdGui.ResetOnSpawn = false
+    AdGui.DisplayOrder = 9999
+    AdGui.IgnoreGuiInset = true
+    AdGui.Parent = CoreGui
+
+    -- Frame principal
+    local anuncio = Instance.new("Frame", AdGui)
+    anuncio.Size = UDim2.new(0, 0, 0, 0)
+    anuncio.Position = UDim2.new(0.5, 0, 0.5, 0)
+    anuncio.BackgroundColor3 = COR_FUNDO
+    anuncio.BackgroundTransparency = 0
+    anuncio.BorderSizePixel = 0
+    anuncio.ClipsDescendants = true
+    anuncio.ZIndex = 1
+
+    local cAd = Instance.new("UICorner", anuncio)
+    cAd.CornerRadius = UDim.new(0, 10)
+
+    local sAd = Instance.new("UIStroke", anuncio)
+    sAd.Color = COR_VERDE
+    sAd.Thickness = 2
+    sAd.ZIndex = 2
+
+    -- 🫧 Bolhas coloridas dentro do anúncio
+    local bolhasAd = Instance.new("Frame", anuncio)
+    bolhasAd.Size = UDim2.new(1, 0, 1, 0)
+    bolhasAd.BackgroundTransparency = 1
+    bolhasAd.ClipsDescendants = true
+    bolhasAd.ZIndex = 0
+
+    local adAberto = true
+
+    task.spawn(function()
+        while adAberto and bolhasAd.Parent do
+            local tam = math.random(5, 12)
+            local b = Instance.new("Frame", bolhasAd)
+            b.Size = UDim2.new(0, tam, 0, tam)
+            b.Position = UDim2.new(math.random(), 0, 1, 5)
+            local cores = {
+                Color3.fromRGB(46, 204, 113),
+                Color3.fromRGB(52, 152, 219),
+                Color3.fromRGB(155, 89, 182),
+                Color3.fromRGB(241, 196, 15),
+                Color3.fromRGB(231, 76, 60),
+            }
+            b.BackgroundColor3 = cores[math.random(1, #cores)]
+            b.BackgroundTransparency = math.random(20, 45) / 100
+            b.BorderSizePixel = 0
+            b.ZIndex = 0
+
+            local cc = Instance.new("UICorner", b)
+            cc.CornerRadius = UDim.new(1, 0)
+
+            local tw = TweenService:Create(b, TweenInfo.new(math.random(4, 8), Enum.EasingStyle.Linear), {
+                Position = UDim2.new(b.Position.X.Scale, 0, 0, -15),
+                BackgroundTransparency = 1
+            })
+            tw:Play()
+            tw.Completed:Connect(function() if b and b.Parent then b:Destroy() end end)
+            task.wait(math.random(12, 35) / 100)
+        end
+    end)
+
+    -- ─── Header ───
+    local adHeader = Instance.new("Frame", anuncio)
+    adHeader.Size = UDim2.new(1, 0, 0, 40)
+    adHeader.BackgroundColor3 = COR_SECUNDARIA
+    adHeader.BackgroundTransparency = 0.1
+    adHeader.BorderSizePixel = 0
+    adHeader.ZIndex = 2
+
+    local cH = Instance.new("UICorner", adHeader)
+    cH.CornerRadius = UDim.new(0, 10)
+
+    local adIcon = Instance.new("TextLabel", adHeader)
+    adIcon.Size = UDim2.new(0, 24, 0, 24)
+    adIcon.Position = UDim2.new(0, 10, 0.5, -12)
+    adIcon.BackgroundTransparency = 1
+    adIcon.Text = "📢"
+    adIcon.TextSize = 15
+    adIcon.ZIndex = 3
+
+    local adTitle = Instance.new("TextLabel", adHeader)
+    adTitle.Size = UDim2.new(1, -70, 1, 0)
+    adTitle.Position = UDim2.new(0, 40, 0, 0)
+    adTitle.BackgroundTransparency = 1
+    adTitle.Text = "Updates!"
+    adTitle.TextColor3 = COR_VERDE
+    adTitle.TextSize = 13
+    adTitle.Font = Enum.Font.GothamBold
+    adTitle.TextXAlignment = Enum.TextXAlignment.Left
+    adTitle.ZIndex = 3
+
+    local adClose = Instance.new("TextButton", adHeader)
+    adClose.Size = UDim2.new(0, 24, 0, 24)
+    adClose.Position = UDim2.new(1, -32, 0.5, -12)
+    adClose.BackgroundTransparency = 1
+    adClose.Text = "✕"
+    adClose.TextColor3 = COR_TEXTO_CINZA
+    adClose.TextSize = 14
+    adClose.Font = Enum.Font.GothamBold
+    adClose.AutoButtonColor = false
+    adClose.ZIndex = 3
+
+    adClose.MouseEnter:Connect(function() adClose.TextColor3 = COR_VERMELHO end)
+    adClose.MouseLeave:Connect(function() adClose.TextColor3 = COR_TEXTO_CINZA end)
+
+    -- ─── Conteúdo (EDITA AQUI) ───
+    local adText = Instance.new("TextLabel", anuncio)
+    adText.Size = UDim2.new(1, -20, 1, -80)
+    adText.Position = UDim2.new(0, 10, 0, 48)
+    adText.BackgroundTransparency = 1
+    adText.Text = "🎉 Bem-vindo ao Rd4X Hub!\n\nEste hub foi lançado a pouco tempo e já está com diversas funções!... Mas, essa é a primeira versão de muitas, por isso, se achar bugs/falhas nos conte no Discord!"
+    adText.TextColor3 = COR_TEXTO
+    adText.TextSize = 11
+    adText.Font = Enum.Font.Gotham
+    adText.TextXAlignment = Enum.TextXAlignment.Left
+    adText.TextYAlignment = Enum.TextYAlignment.Top
+    adText.TextWrapped = true
+    adText.ZIndex = 3
+
+    -- ─── Botão "Entendi!" ───
+    local adOk = Instance.new("TextButton", anuncio)
+    adOk.Size = UDim2.new(1, -20, 0, 32)
+    adOk.Position = UDim2.new(0, 10, 1, -42)
+    adOk.BackgroundColor3 = COR_VERDE
+    adOk.BackgroundTransparency = 0
+    adOk.BorderSizePixel = 0
+    adOk.Text = "Entendi!"
+    adOk.TextColor3 = Color3.fromRGB(255, 255, 255)
+    adOk.TextSize = 12
+    adOk.Font = Enum.Font.GothamBold
+    adOk.AutoButtonColor = false
+    adOk.ZIndex = 3
+
+    local cOk = Instance.new("UICorner", adOk)
+    cOk.CornerRadius = UDim.new(0, 6)
+
+    -- ─── Fechar com animação ───
+    local function fecharAd()
+        adAberto = false
+        TweenService:Create(anuncio, TweenInfo.new(0.3), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        for _, obj in ipairs(anuncio:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+                elseif obj:IsA("Frame") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+                elseif obj:IsA("UIStroke") then
+                    TweenService:Create(obj, TweenInfo.new(0.3), {Transparency = 1}):Play()
+                end
+            end)
+        end
+        task.wait(0.35)
+        AdGui:Destroy()
+    end
+
+    adClose.MouseButton1Click:Connect(fecharAd)
+    adOk.MouseButton1Click:Connect(fecharAd)
+
+    -- 🎬 Animação de entrada
+    TweenService:Create(anuncio, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 340, 0, 220),
+        Position = UDim2.new(0.5, -170, 0.5, -110)
+    }):Play()
 end)
 
 Notify("RD4X Hub", "Interface carregada com sucesso!", 4)
@@ -3282,7 +3462,7 @@ Notify("RD4X Hub", "Interface carregada com sucesso!", 4)
 -- 🎵 MÚSICA DE FUNDO
 -- ==========================================================
 local musicaFundo = Instance.new("Sound", SoundService)
-musicaFundo.SoundId = "rbxassetid://134959834418523"  -- troque pelo ID
+musicaFundo.SoundId = "rbxassetid://83894877"  -- troque pelo ID
 musicaFundo.Volume = 0.15
 musicaFundo.Looped = true
 musicaFundo:Play()
@@ -3370,9 +3550,6 @@ task.spawn(function()
         pcall(function()
             RPNameText:FireServer("RolePlayBio", textoBio)
         end)
-        print("✅ Bio aplicada automaticamente: " .. textoBio)
-    else
-        warn("⚠️ Remote da Bio não encontrado")
     end
 end)
 -- ==========================================================
