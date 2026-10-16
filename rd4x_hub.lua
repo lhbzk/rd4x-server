@@ -3669,7 +3669,7 @@ if UsuarioAutorizado then
 -- 🎨 COMO ADICIONAR SEUS JUMPSCARES:
 --
 --     ["Jumpscare 1"] = {
---         imagem = "rbxassetid://ID_DA_CARA",
+--         imagem = "rbxassetid://80935650312065",
 --         som    = "rbxassetid://140558918020400",
 --     },
 --
@@ -3681,37 +3681,31 @@ local LISTA_JUMPSCARES = {
     -- ═══════════════════════════════════════════════════════
 
     -- ─── Exemplos (podem ser deletados) ───
-    ["Jumpscare 2"] = {
-        imagem = "rbxassetid://110774547955834",
+    ["Jumpscare 1"] = {
+        imagem = "rbxassetid://83706098778583",
         som    = "rbxassetid://130586258888902",
     },
 
-    ["😱 Grito"] = {
+    ["😱 Jumpscare 2"] = {
         imagem = "rbxassetid://125557150437761",
-        som    = "rbxassetid://1837844399",
+        som    = "rbxassetid://133973334152130",
     },
 
-    ["👻 Fantasma"] = {
-        imagem = "rbxassetid://124682976840597",
-        som    = "rbxassetid://1837844399",
+    ["Jumpscare 3"] = {
+        imagem = "rbxassetid://117625655704744",
+        som    = "rbxassetid://140558918020400",
     },
 
     -- ─── Seus jumpscares personalizados ───
-    ["🔴 Jumpscare 1"] = {
-        imagem = "rbxassetid://COLE_SEU_ID_DA_IMAGEM_AQUI",
-        som    = "rbxassetid://COLE_SEU_ID_DO_SOM_AQUI",
+    ["🔴 Jumpscare 4"] = {
+        imagem = "rbxassetid://106883295632038",
+        som    = "rbxassetid://130586258888902",
     },
 
-    ["🔴 Jumpscare 2"] = {
-        imagem = "rbxassetid://COLE_SEU_ID_DA_IMAGEM_AQUI",
-        som    = "rbxassetid://COLE_SEU_ID_DO_SOM_AQUI",
+    ["🔴 Jumpscare 5"] = {
+        imagem = "rbxassetid://105916553275189",
+        som    = "rbxassetid://140558918020400",
     },
-
-    ["🔴 Jumpscare 3"] = {
-        imagem = "rbxassetid://COLE_SEU_ID_DA_IMAGEM_AQUI",
-        som    = "rbxassetid://COLE_SEU_ID_DO_SOM_AQUI",
-    },
-
     -- 👆 ADICIONE MAIS AQUI EM CIMA
     -- ═══════════════════════════════════════════════════════
 }
