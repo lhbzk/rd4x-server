@@ -704,6 +704,7 @@ btn.MouseButton1Click:Connect(function()
         som:Play()
         task.delay(2, function() som:Destroy() end)
     end)
+end
     if opts.Callback then pcall(opts.Callback) end
 end)
     return btn
