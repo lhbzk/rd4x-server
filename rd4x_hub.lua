@@ -2202,7 +2202,6 @@ local function encontrarOnibusDoJogador()
     end
     return nil, nil
 end
-
 UI.Button(Tabs.Troll, {
     Name = "🌪️ Iniciar Bus Fling 3D (Void Kill)",
     Callback = function()
@@ -2233,11 +2232,43 @@ UI.Button(Tabs.Troll, {
         end
 
         busAtivo = true
+
+        -- 🚌 FORÇA O SPAWN DE UM NOVO ÔNIBUS ESCOLAR
         CarRemote:FireServer("PickingCar", "SchoolBus")
-        Notify("Bus Kill 3D", "Buscando ônibus no servidor...", 3)
+        Notify("Bus Kill 3D", "Gerando novo ônibus no servidor...", 3)
 
         task.spawn(function()
-            local onibus, seatMotorista = encontrarOnibusDoJogador()
+            -- 🔍 Função que busca SEMPRE o ônibus gerado mais recentemente na superfície
+            local function encontrarNovoOnibus()
+                local tInicio = tick()
+                local ultimoOnibus = nil
+                local ultimoSeat = nil
+
+                while tick() - tInicio < 4 do
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") then
+                            local nomeUpper = obj.Name:upper()
+                            local playerUpper = LocalPlayer.Name:upper()
+                            
+                            if (nomeUpper:find("BUS") or nomeUpper:find("SCHOOL") or nomeUpper:find(playerUpper)) then
+                                local seat = obj:FindFirstChildOfClass("VehicleSeat") or obj:FindFirstChild("VehicleSeat", true)
+                                -- Ignora ônibus antigos que ficaram presos no Void (Y < -50)
+                                if seat and seat.Position.Y > -50 then
+                                    ultimoOnibus = obj
+                                    ultimoSeat = seat
+                                end
+                            end
+                        end
+                    end
+                    if ultimoOnibus and ultimoSeat then
+                        return ultimoOnibus, ultimoSeat
+                    end
+                    task.wait(0.2)
+                end
+                return nil, nil
+            end
+
+            local onibus, seatMotorista = encontrarNovoOnibus()
             local myChar = LocalPlayer.Character
             local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
             local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -2246,7 +2277,7 @@ UI.Button(Tabs.Troll, {
                 pcall(function() seatMotorista:Sit(myHum) end)
                 task.wait(0.1)
 
-                Notify("Bus Kill 3D", "Perseguindo e girando em 3D em " .. alvo.Name .. "!", 3)
+                Notify("Bus Kill 3D", "Perseguindo em 3D: " .. alvo.Name, 3)
 
                 local girando = true
                 local conexaoRender
@@ -2271,19 +2302,19 @@ UI.Button(Tabs.Troll, {
                         girando = false
                         if conexaoRender then conexaoRender:Disconnect() end
                         
-                        Notify("Bus Kill 3D", "💀 Vítima capturada! Jogando no Void...", 3)
+                        Notify("Bus Kill 3D", "💀 Vítima pego! Jogando no Void (-300)...", 3)
                         
-                        -- 1. Joga o ônibus e o alvo pro Void (-5000 Y)
+                        -- 1. Manda o ônibus para Y = -300
                         onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -300, rootAlvo.Position.Z))
-                        task.wait(0.3)
+                        task.wait(0.2)
 
-                        -- 2. Te tira do assento e te traz de volta para a superfície (Praça Central)
+                        -- 2. Te tira do assento e te manda para a superfície na Praça
                         pcall(function()
                             if myHum then myHum.Sit = false end
                             if myHrp then myHrp.CFrame = CFrame.new(-26, 7, 1) end
                         end)
 
-                        Notify("Bus Kill 3D", "✨ Você voltou para a superfície em segurança!", 3)
+                        Notify("Bus Kill 3D", "✨ Você voltou para a superfície!", 3)
                         
                         if conexaoSentouBus then conexaoSentouBus:Disconnect() end
                         busAtivo = false
@@ -2297,7 +2328,7 @@ UI.Button(Tabs.Troll, {
                     if conexaoSentouBus then conexaoSentouBus:Disconnect() end
                 end)
             else
-                Notify("Erro", "Ônibus não foi localizado!", 3)
+                Notify("Erro", "Falha ao gerar novo ônibus! Tente clicar novamente.", 3)
                 busAtivo = false
             end
         end)
