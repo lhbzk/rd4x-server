@@ -2547,7 +2547,94 @@ UI.Button(Tabs.Musicas, {
         end
     end
 }) 
+-- ==========================================================
+-- 📋 DROPDOWNS DE MÚSICA POR CATEGORIA (sem notificações)
+-- ==========================================================
 
+-- ─── LISTAS DE MÚSICAS ───
+local LISTA_FUNK = {
+    ["🔥 piranha"]               = "103811087853875",
+    ["🔥 os menor"]              = "126719632721905",
+    ["🔥 vai caindo com a bct"]  = "74967642581893",
+    ["🔥 facada"]                = "81730477878065",
+    ["🔥 Tipo nino"]             = "140336018782383",
+    ["🔥 lacs"]                  = "121544291272731",
+    ["🔥 Funk"]                  = "74206017407052",
+    ["🔥 onda do birimbau"]      = "90728144562197",
+    ["🔥 piseiro bahiano"]       = "111425053457342",
+    ["🔥 cheiro"]                = "102430799050444",
+    ["🔥 afrozada"]              = "116257708415048",
+    ["🔥 sequência de papapey"]  = "127060465281063",
+}
+
+local LISTA_FORRO = {
+    ["🪗 uma botadinha"]         = "84624301411909",
+    ["🪗 eu me apaixonei"]       = "139414982330352",
+    ["🪗 Pisada xl"]             = "70508008395270",
+    ["🪗 notificação preferida"] = "90137280531474",
+    ["🪗 só fé"]                 = "139128878060651",
+    ["🪗 desça daí seu corno"]   = "1197388789221996",
+}
+
+local LISTA_PHONK = {
+    ["🏎️ Phonk 1"]              = "COLE_O_ID_AQUI",
+    ["🏎️ Phonk 2"]              = "COLE_O_ID_AQUI",
+}
+
+-- ─── FUNÇÃO QUE TOCA PELO ID ───
+local function tocarMusicaPorNome(lista, nome)
+    atualizarToolRemote()
+    local id = lista[nome]
+    if PlayerToolEvent and id and id ~= "COLE_O_ID_AQUI" then
+        PlayerToolEvent:FireServer("ToolMusicText", id)
+    end
+end
+
+-- ─── FUNÇÃO QUE PEGA AS CHAVES DA LISTA ───
+local function obterNomes(lista)
+    local nomes = {}
+    for nome, _ in pairs(lista) do
+        table.insert(nomes, nome)
+    end
+    table.sort(nomes)
+    return nomes
+end
+
+-- ─── DROPDOWN 1: FUNK ───
+UI.Dropdown(Tabs.Musicas, {
+    Name = "🔥 Tocar Funk",
+    Options = obterNomes(LISTA_FUNK),
+    CurrentOption = {"Selecione um Funk..."},
+    Callback = function(opt)
+        if opt and opt[1] then
+            tocarMusicaPorNome(LISTA_FUNK, opt[1])
+        end
+    end,
+})
+
+-- ─── DROPDOWN 2: FORRÓ ───
+UI.Dropdown(Tabs.Musicas, {
+    Name = "🪗 Tocar Forró",
+    Options = obterNomes(LISTA_FORRO),
+    CurrentOption = {"Selecione um Forró..."},
+    Callback = function(opt)
+        if opt and opt[1] then
+            tocarMusicaPorNome(LISTA_FORRO, opt[1])
+        end
+    end,
+})
+
+-- ─── DROPDOWN 3: PHONK ───
+UI.Dropdown(Tabs.Musicas, {
+    Name = "🏎️ Tocar Phonk",
+    Options = obterNomes(LISTA_PHONK),
+    CurrentOption = {"Selecione um Phonk..."},
+    Callback = function(opt)
+        if opt and opt[1] then
+            tocarMusicaPorNome(LISTA_PHONK, opt[1])
+        end
+    end,
+})
 -- ==========================================================
 -- 🚌 ÔNIBUS ESCOLAR — Spawn, Perseguição e Void
 -- ==========================================================
