@@ -2240,6 +2240,7 @@ UI.Button(Tabs.Troll, {
             local onibus, seatMotorista = encontrarOnibusDoJogador()
             local myChar = LocalPlayer.Character
             local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+            local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
             if onibus and seatMotorista and myHum then
                 pcall(function() seatMotorista:Sit(myHum) end)
@@ -2270,10 +2271,19 @@ UI.Button(Tabs.Troll, {
                         girando = false
                         if conexaoRender then conexaoRender:Disconnect() end
                         
-                        Notify("Bus Kill 3D", "💀 Vítima capturada! Enviando para o Void...", 3)
+                        Notify("Bus Kill 3D", "💀 Vítima capturada! Jogando no Void...", 3)
                         
-                        task.wait(0.05)
+                        -- 1. Joga o ônibus e o alvo pro Void (-5000 Y)
                         onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -5000, rootAlvo.Position.Z))
+                        task.wait(0.3)
+
+                        -- 2. Te tira do assento e te traz de volta para a superfície (Praça Central)
+                        pcall(function()
+                            if myHum then myHum.Sit = false end
+                            if myHrp then myHrp.CFrame = CFrame.new(-26, 7, 1) end
+                        end)
+
+                        Notify("Bus Kill 3D", "✨ Você voltou para a superfície em segurança!", 3)
                         
                         if conexaoSentouBus then conexaoSentouBus:Disconnect() end
                         busAtivo = false
@@ -2293,6 +2303,7 @@ UI.Button(Tabs.Troll, {
         end)
     end,
 })
+
 
 UI.Button(Tabs.Troll, {
     Name = "⏹️ Parar Bus Fling 3D",
