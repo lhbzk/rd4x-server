@@ -2274,7 +2274,7 @@ UI.Button(Tabs.Troll, {
                         Notify("Bus Kill 3D", "💀 Vítima capturada! Jogando no Void...", 3)
                         
                         -- 1. Joga o ônibus e o alvo pro Void (-5000 Y)
-                        onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -5000, rootAlvo.Position.Z))
+                        onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -300, rootAlvo.Position.Z))
                         task.wait(0.3)
 
                         -- 2. Te tira do assento e te traz de volta para a superfície (Praça Central)
