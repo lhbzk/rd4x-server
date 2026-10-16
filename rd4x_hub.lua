@@ -165,7 +165,7 @@ MainFrame.BackgroundTransparency = TRANSP_FUNDO
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.ZIndex = 1
-
+MainFrame.Visible = false
 local cornerMain = Instance.new("UICorner", MainFrame)
 cornerMain.CornerRadius = UDim.new(0, 10)
 
@@ -3324,7 +3324,8 @@ MainFrame.Visible = false
 local loadingGui = Instance.new("ScreenGui")
 loadingGui.Name = "RD4X_Loading"
 loadingGui.ResetOnSpawn = false
-loadingGui.DisplayOrder = 9999
+loadingGui.DisplayOrder = 99999
+loadingGui.IgnoreGuiInset = true
 loadingGui.Parent = CoreGui
 
 local bgLoad = Instance.new("Frame", loadingGui)
