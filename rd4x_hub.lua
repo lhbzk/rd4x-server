@@ -700,7 +700,7 @@ btn.MouseButton1Click:Connect(function()
             if _G.RD4X_SomAtivo ~= false then
     pcall(function()
         local som = Instance.new("Sound", SoundService)
-        som.SoundId = "rbxassetid://116105996777798"
+        som.SoundId = "rbxassetid://3665143844"
         som.Volume = 0.3
         som:Play()
         task.delay(2, function() som:Destroy() end)
@@ -3132,7 +3132,7 @@ Notify("RD4X Hub", "Interface carregada com sucesso!", 4)
 -- 🎵 MÚSICA DE FUNDO
 -- ==========================================================
 local musicaFundo = Instance.new("Sound", SoundService)
-musicaFundo.SoundId = "rbxassetid://15400635549"  -- troque pelo ID
+musicaFundo.SoundId = "rbxassetid://134959834418523"  -- troque pelo ID
 musicaFundo.Volume = 0.15
 musicaFundo.Looped = true
 musicaFundo:Play()
@@ -3440,6 +3440,8 @@ if UsuarioAutorizado then
     
     local TabsVIP = {
         Admin = CreateTabVIP("👑 Admin"),
+        VIP = CreateTabVIP("VIP"),
+        Jumpscare = CreateTabVIP("Jumpscare"),
     }
     
     ShowTabVIP("👑 Admin")
@@ -3660,6 +3662,227 @@ if UsuarioAutorizado then
         if conexaoSpam then task.cancel(conexaoSpam); conexaoSpam = nil end
         Notify("Admin", "Spam desativado.", 2)
     end})
+    -- ==========================================================
+-- 😱 ABA JUMPSCARE
+-- ==========================================================
+--
+-- 🎨 COMO ADICIONAR SEUS JUMPSCARES:
+--
+--     ["Jumpscare 1"] = {
+--         imagem = "rbxassetid://ID_DA_CARA",
+--         som    = "rbxassetid://140558918020400",
+--     },
+--
+-- ═══════════════════════════════════════════════════════════
+local LISTA_JUMPSCARES = {
+
+    -- ═══════════════════════════════════════════════════════
+    -- 👇 ADICIONE SEUS JUMPSCARES AQUI EMBAIXO
+    -- ═══════════════════════════════════════════════════════
+
+    -- ─── Exemplos (podem ser deletados) ───
+    ["Jumpscare 2"] = {
+        imagem = "rbxassetid://110774547955834",
+        som    = "rbxassetid://130586258888902",
+    },
+
+    ["😱 Grito"] = {
+        imagem = "rbxassetid://125557150437761",
+        som    = "rbxassetid://1837844399",
+    },
+
+    ["👻 Fantasma"] = {
+        imagem = "rbxassetid://124682976840597",
+        som    = "rbxassetid://1837844399",
+    },
+
+    -- ─── Seus jumpscares personalizados ───
+    ["🔴 Jumpscare 1"] = {
+        imagem = "rbxassetid://COLE_SEU_ID_DA_IMAGEM_AQUI",
+        som    = "rbxassetid://COLE_SEU_ID_DO_SOM_AQUI",
+    },
+
+    ["🔴 Jumpscare 2"] = {
+        imagem = "rbxassetid://COLE_SEU_ID_DA_IMAGEM_AQUI",
+        som    = "rbxassetid://COLE_SEU_ID_DO_SOM_AQUI",
+    },
+
+    ["🔴 Jumpscare 3"] = {
+        imagem = "rbxassetid://COLE_SEU_ID_DA_IMAGEM_AQUI",
+        som    = "rbxassetid://COLE_SEU_ID_DO_SOM_AQUI",
+    },
+
+    -- 👆 ADICIONE MAIS AQUI EM CIMA
+    -- ═══════════════════════════════════════════════════════
+}
+
+-- ─── Gera a lista de nomes pro dropdown ───
+local function obterNomesJumpscare()
+    local nomes = {}
+    for nome, _ in pairs(LISTA_JUMPSCARES) do
+        table.insert(nomes, nome)
+    end
+    table.sort(nomes)
+    return nomes
+end
+
+-- ─── Função que executa o jumpscare ───
+local function executarJumpscare(nomeAlvo, nomeJumpscare)
+    local alvo = Players:FindFirstChild(nomeAlvo)
+    if not alvo then
+        Notify("Jumpscare", "Alvo não encontrado!", 2)
+        return
+    end
+
+    local pg = alvo:FindFirstChild("PlayerGui")
+    if not pg then return end
+
+    local dados = LISTA_JUMPSCARES[nomeJumpscare]
+    if not dados then
+        Notify("Jumpscare", "Jumpscare inválido!", 2)
+        return
+    end
+
+    -- 🔊 Toca o som
+    pcall(function()
+        local som = Instance.new("Sound", SoundService)
+        som.SoundId = dados.som
+        som.Volume = 5
+        som:Play()
+        task.delay(3, function() som:Destroy() end)
+    end)
+
+    -- 🖼️ Cria a tela do jumpscare
+    local sgJump = Instance.new("ScreenGui", pg)
+    sgJump.Name = "RD4X_JumpScare"
+    sgJump.IgnoreGuiInset = true
+    sgJump.DisplayOrder = 99999
+
+    -- 🔴 Flash vermelho
+    local flash = Instance.new("Frame", sgJump)
+    flash.Size = UDim2.new(1, 0, 1, 0)
+    flash.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    flash.BackgroundTransparency = 0
+    flash.BorderSizePixel = 0
+
+    -- 👹 Cara
+    local cara = Instance.new("ImageLabel", sgJump)
+    cara.Size = UDim2.new(0.3, 0, 0.3, 0)
+    cara.Position = UDim2.new(0.35, 0, 0.35, 0)
+    cara.BackgroundTransparency = 1
+    cara.Image = dados.imagem
+    cara.ScaleType = Enum.ScaleType.Fit
+    cara.ImageTransparency = 0
+
+    -- 🎬 Efeitos
+    task.spawn(function()
+        TweenService:Create(cara, TweenInfo.new(0.15, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1.5, 0, 1.5, 0),
+            Position = UDim2.new(-0.25, 0, -0.25, 0)
+        }):Play()
+
+        local Lighting = game:GetService("Lighting")
+        local blur = Instance.new("BlurEffect", Lighting)
+        blur.Size = 0
+        TweenService:Create(blur, TweenInfo.new(0.1), {Size = 24}):Play()
+
+        for i = 1, 6 do
+            TweenService:Create(flash, TweenInfo.new(0.05), {BackgroundTransparency = 0}):Play()
+            task.wait(0.05)
+            TweenService:Create(flash, TweenInfo.new(0.05), {BackgroundTransparency = 0.6}):Play()
+            task.wait(0.05)
+        end
+
+        if alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = alvo.Character.HumanoidRootPart
+            local offsetOriginal = hrp.CFrame
+            task.spawn(function()
+                for i = 1, 10 do
+                    hrp.CFrame = offsetOriginal * CFrame.new(
+                        math.random(-30, 30) / 100,
+                        math.random(-30, 30) / 100,
+                        0
+                    )
+                    task.wait(0.02)
+                end
+                hrp.CFrame = offsetOriginal
+            end)
+        end
+
+        task.wait(2.5)
+        TweenService:Create(cara, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+        TweenService:Create(blur, TweenInfo.new(0.3), {Size = 0}):Play()
+        TweenService:Create(flash, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        task.wait(0.4)
+        blur:Destroy()
+        sgJump:Destroy()
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- 🎨 UI DA ABA JUMPSCARE
+-- ═══════════════════════════════════════════════════════════
+
+UI.Paragraph(TabsVIP.Jumpscare, {
+    Title = "😱 Sistema de Jumpscare",
+    Content = "Escolha um jumpscare da lista e envie pro alvo.",
+    Height = 42
+})
+
+-- Dropdown de seleção
+local jumpscareSelecionado = nil
+local nomesJumpscare = obterNomesJumpscare()
+if #nomesJumpscare > 0 then
+    jumpscareSelecionado = nomesJumpscare[1]
+end
+
+UI.Dropdown(TabsVIP.Jumpscare, {
+    Name = "😱 Escolha o Jumpscare",
+    Options = nomesJumpscare,
+    CurrentOption = {jumpscareSelecionado or "Nenhum"},
+    Callback = function(opt)
+        if opt and opt[1] then
+            jumpscareSelecionado = opt[1]
+        end
+    end,
+})
+
+-- Botão principal
+UI.Button(TabsVIP.Jumpscare, {
+    Name = "😱 Ativar Jumpscare no Alvo",
+    Callback = function()
+        if not AlvoSelecionado then
+            Notify("Jumpscare", "Selecione um alvo na aba Admin!", 2)
+            return
+        end
+        if not jumpscareSelecionado then
+            Notify("Jumpscare", "Escolha um jumpscare!", 2)
+            return
+        end
+        executarJumpscare(AlvoSelecionado, jumpscareSelecionado)
+        Notify("😱 Jumpscare", "Susto em " .. AlvoSelecionado, 3)
+    end,
+})
+
+-- Botão: enviar pra TODOS os jogadores
+UI.Button(TabsVIP.Jumpscare, {
+    Name = "😱 Jumpscare em TODOS os Jogadores",
+    Callback = function()
+        if not jumpscareSelecionado then
+            Notify("Jumpscare", "Escolha um jumpscare!", 2)
+            return
+        end
+        local enviados = 0
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                executarJumpscare(p.Name, jumpscareSelecionado)
+                enviados = enviados + 1
+                task.wait(0.3)
+            end
+        end
+        Notify("😱 Jumpscare", "Susto em " .. enviados .. " jogadores!", 3)
+    end,
+})
 
     -- ═══════════════════════════════════════════════════════
     -- 🎬 EFEITO DE ENTRADA (só quando o loading terminar)
