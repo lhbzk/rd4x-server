@@ -2126,29 +2126,207 @@ UI.Dropdown(Tabs.Musicas, {
 -- 🚌 ÔNIBUS ESCOLAR — Spawn, Perseguição e Void
 -- ==========================================================
 -- ==========================================================
--- 👑 HEAD SIT (SENTAR NA CABEÇA DO ALVO)
+-- 🤡 ABA TROLL COMPLETA (RD4X HUB)
 -- ==========================================================
+
+-- ----------------------------------------------------------
+-- 1. SELEÇÃO DE ALVO E LISTA DE JOGADORES
+-- ----------------------------------------------------------
+local alvoTrollSelecionado = LocalPlayer.Name
+
+local function obterListaJogadoresTroll()
+    local lista = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(lista, p.Name)
+        end
+    end
+    if #lista == 0 then table.insert(lista, LocalPlayer.Name) end
+    return lista
+end
+
+UI.Paragraph(Tabs.Troll, {
+    Title = "🎯 Seleção de Alvo",
+    Content = "Escolha um jogador do servidor para aplicar as funções abaixo.",
+    Height = 42
+})
+
+local dropdownAlvoTroll = UI.Dropdown(Tabs.Troll, {
+    Name = "👤 Selecionar Vítima",
+    Options = obterListaJogadoresTroll(),
+    CurrentOption = {obterListaJogadoresTroll()[1]},
+    Callback = function(opt)
+        if opt and opt[1] then
+            alvoTrollSelecionado = opt[1]
+            Notify("Troll", "Alvo selecionado: " .. alvoTrollSelecionado, 2)
+        end
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "🔄 Atualizar Lista de Vítimas",
+    Callback = function()
+        dropdownAlvoTroll:Refresh(obterListaJogadoresTroll())
+        Notify("Troll", "Lista de jogadores atualizada!", 2)
+    end,
+})
+
+-- ----------------------------------------------------------
+-- 2. BUS FLING & TRACKING 3D (VOID KILL)
+-- ----------------------------------------------------------
+UI.Paragraph(Tabs.Troll, {
+    Title = "🚌 Bus Fling & Tracking 3D",
+    Content = "Persegue o alvo girando o ônibus escolar em 3D até prendê-lo e jogá-lo no Void.",
+    Height = 42
+})
+
+local busAtivo = false
+
+local function encontrarOnibusDoJogador()
+    local tempoInicio = tick()
+    while tick() - tempoInicio < 4 do
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") then
+                local nomeUpper = obj.Name:upper()
+                local playerUpper = LocalPlayer.Name:upper()
+                
+                if nomeUpper:find("BUS") or nomeUpper:find("SCHOOL") or nomeUpper:find(playerUpper) then
+                    local seat = obj:FindFirstChildOfClass("VehicleSeat") or obj:FindFirstChild("VehicleSeat", true)
+                    if seat then
+                        return obj, seat
+                    end
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+    return nil, nil
+end
+
+UI.Button(Tabs.Troll, {
+    Name = "🌪️ Iniciar Bus Fling 3D (Void Kill)",
+    Callback = function()
+        if busAtivo then
+            Notify("Troll", "Já tem um ônibus em perseguição!", 2)
+            return
+        end
+
+        local RE = ReplicatedStorage:FindFirstChild("RE")
+        local CarRemote = RE and RE:FindFirstChild("1Ca1r")
+
+        if not CarRemote then
+            Notify("Erro", "Remote 1Ca1r não encontrado!", 3)
+            return
+        end
+
+        local alvo = Players:FindFirstChild(alvoTrollSelecionado)
+        if not alvo or not alvo.Character then
+            Notify("Troll", "Selecione uma vítima válida na lista!", 3)
+            return
+        end
+
+        local rootAlvo = alvo.Character:FindFirstChild("HumanoidRootPart")
+        local humanoidAlvo = alvo.Character:FindFirstChildOfClass("Humanoid")
+        if not rootAlvo or not humanoidAlvo then
+            Notify("Troll", "Vítima sem personagem carregado!", 3)
+            return
+        end
+
+        busAtivo = true
+        CarRemote:FireServer("PickingCar", "SchoolBus")
+        Notify("Bus Kill 3D", "Buscando ônibus no servidor...", 3)
+
+        task.spawn(function()
+            local onibus, seatMotorista = encontrarOnibusDoJogador()
+            local myChar = LocalPlayer.Character
+            local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+
+            if onibus and seatMotorista and myHum then
+                pcall(function() seatMotorista:Sit(myHum) end)
+                task.wait(0.1)
+
+                Notify("Bus Kill 3D", "Perseguindo e girando em 3D em " .. alvo.Name .. "!", 3)
+
+                local girando = true
+                local conexaoRender
+
+                conexaoRender = RunService.RenderStepped:Connect(function()
+                    if girando and rootAlvo and rootAlvo.Parent and onibus and onibus.Parent then
+                        local tempo = tick() * 25
+                        local rotX = math.rad(tempo * 50 % 360)
+                        local rotY = math.rad(tempo * 80 % 360)
+                        local rotZ = math.rad(tempo * 30 % 360)
+
+                        local posicaoAlvo = rootAlvo.CFrame
+                        onibus:PivotTo(posicaoAlvo * CFrame.Angles(rotX, rotY, rotZ))
+                    else
+                        if conexaoRender then conexaoRender:Disconnect() end
+                    end
+                end)
+
+                local conexaoSentouBus
+                conexaoSentouBus = humanoidAlvo.Seated:Connect(function(isSeated, seat)
+                    if isSeated and seat and seat:IsDescendantOf(onibus) then
+                        girando = false
+                        if conexaoRender then conexaoRender:Disconnect() end
+                        
+                        Notify("Bus Kill 3D", "💀 Vítima capturada! Enviando para o Void...", 3)
+                        
+                        task.wait(0.05)
+                        onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -5000, rootAlvo.Position.Z))
+                        
+                        if conexaoSentouBus then conexaoSentouBus:Disconnect() end
+                        busAtivo = false
+                    end
+                end)
+
+                task.delay(30, function()
+                    girando = false
+                    busAtivo = false
+                    if conexaoRender then conexaoRender:Disconnect() end
+                    if conexaoSentouBus then conexaoSentouBus:Disconnect() end
+                end)
+            else
+                Notify("Erro", "Ônibus não foi localizado!", 3)
+                busAtivo = false
+            end
+        end)
+    end,
+})
+
+UI.Button(Tabs.Troll, {
+    Name = "⏹️ Parar Bus Fling 3D",
+    Callback = function()
+        busAtivo = false
+        Notify("Troll", "Bus Kill desativado!", 2)
+    end,
+})
+
+-- ----------------------------------------------------------
+-- 3. HEAD SIT (SENTAR NA CABEÇA DO ALVO)
+-- ----------------------------------------------------------
+UI.Paragraph(Tabs.Troll, {
+    Title = "👑 Interações de Personagem",
+    Content = "Grude no personagem do jogador selecionado.",
+    Height = 42
+})
+
 local conexaoHeadSit = nil
-local headSitAtivo = false
 
 UI.Toggle(Tabs.Troll, {
     Name = "👑 Head Sit (Sentar na Cabeça do Alvo)",
     CurrentValue = false,
     Callback = function(state)
-        headSitAtivo = state
-
-        if headSitAtivo then
-            local alvo = Players:FindFirstChild(alvoPropSelecionado) or Players:FindFirstChild(alvoTrollSelecionado)
+        if state then
+            local alvo = Players:FindFirstChild(alvoTrollSelecionado)
             if not alvo or not alvo.Character then
-                Notify("Troll", "Selecione um alvo válido na lista!", 2)
-                headSitAtivo = false
+                Notify("Troll", "Selecione uma vítima válida!", 2)
                 return
             end
 
             Notify("Troll", "Sentado na cabeça de: " .. alvo.Name, 2)
 
             if conexaoHeadSit then conexaoHeadSit:Disconnect() end
-
             conexaoHeadSit = RunService.RenderStepped:Connect(function()
                 pcall(function()
                     local meuChar = LocalPlayer.Character
@@ -2157,7 +2335,6 @@ UI.Toggle(Tabs.Troll, {
                     local cabecaAlvo = alvo.Character and alvo.Character:FindFirstChild("Head")
 
                     if meuHrp and meuHum and cabecaAlvo then
-                        -- Força o estado de sentado e posiciona acima da cabeça
                         meuHum.Sit = true
                         meuHrp.CFrame = cabecaAlvo.CFrame * CFrame.new(0, 1.6, 0)
                     else
@@ -2180,144 +2357,75 @@ UI.Toggle(Tabs.Troll, {
     end
 })
 
-local RE_BUS = ReplicatedStorage:FindFirstChild("RE")
-local CarRemote = RE_BUS and RE_BUS:FindFirstChild("1Ca1r")
-local busAtivo = false
+-- ----------------------------------------------------------
+-- 4. DOG MODE / ATTACH (GRUDAR NAS COSTAS)
+-- ----------------------------------------------------------
+local conexaoAttach = nil
 
-local function ativarCarRemote()
-    RE_BUS = ReplicatedStorage:FindFirstChild("RE")
-    CarRemote = RE_BUS and RE_BUS:FindFirstChild("1Ca1r")
-end
-
-local function encontrarOnibus()
-    local inicio = tick()
-    while tick() - inicio < 4 do
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") then
-                local nome = obj.Name:upper()
-                local meuNome = LocalPlayer.Name:upper()
-                if nome:find("BUS") or nome:find("SCHOOL") or nome:find(LocalPlayer.Name) or nome:find(meuNome) then
-                    local seat = obj:FindFirstChildOfClass("VehicleSeat") or obj:FindFirstChild("VehicleSeat", true)
-                    if seat then return obj, seat end
-                end
-            end
-        end
-        task.wait(0.2)
-    end
-    return nil, nil
-end
-
-UI.Button(Tabs.Troll, {
-    Name = "🚌 Spawnar Ônibus Escolar",
-    Callback = function()
-        ativarCarRemote()
-        if CarRemote then
-            CarRemote:FireServer("PickingCar", "SchoolBus")
-            Notify("Veículo", "Ônibus escolar spawnado!", 3)
-        else
-            Notify("Erro", "Remote 1Ca1r não encontrado", 3)
-        end
-    end
-})
-
-UI.Button(Tabs.Troll, {
-    Name = "🌪️ Bus Fling & Tracking (Todas Direções)",
-    Callback = function()
-        if busAtivo then
-            Notify("Troll", "Já tem ônibus ativo!", 2)
-            return
-        end
-
-        ativarCarRemote()
-        if not CarRemote then
-            Notify("Erro", "Remote 1Ca1r não encontrado", 3)
-            return
-        end
-
-        local alvo = Players:FindFirstChild(alvoTrollSelecionado)
-        if not alvo or not alvo.Character then
-            Notify("Troll", "Selecione uma vítima válida!", 3)
-            return
-        end
-
-        local rootAlvo = alvo.Character:FindFirstChild("HumanoidRootPart")
-        local humAlvo = alvo.Character:FindFirstChildOfClass("Humanoid")
-        if not rootAlvo or not humAlvo then
-            Notify("Troll", "Alvo sem personagem!", 2)
-            return
-        end
-
-        busAtivo = true
-
-        -- Spawn do ônibus
-        CarRemote:FireServer("PickingCar", "SchoolBus")
-        Notify("Troll", "Buscando ônibus...", 3)
-
-        task.spawn(function()
-            local onibus, seatMotorista = encontrarOnibus()
-            local myChar = LocalPlayer.Character
-            local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
-
-            if not onibus or not seatMotorista or not myHum then
-                Notify("Erro", "Ônibus não localizado!", 4)
-                busAtivo = false
+UI.Toggle(Tabs.Troll, {
+    Name = "🐶 Dog Mode (Grudar nas Costas do Alvo)",
+    CurrentValue = false,
+    Callback = function(state)
+        if state then
+            local alvo = Players:FindFirstChild(alvoTrollSelecionado)
+            if not alvo or not alvo.Character then
+                Notify("Troll", "Selecione uma vítima válida!", 2)
                 return
             end
 
-            -- Entra como motorista
-            task.wait(0.2)
-            pcall(function() seatMotorista:Sit(myHum) end)
-            task.wait(0.1)
+            Notify("Troll", "Grudado nas costas de: " .. alvo.Name, 2)
+            if conexaoAttach then conexaoAttach:Disconnect() end
 
-            Notify("Troll", "Perseguindo em todas as direções!", 3)
+            conexaoAttach = RunService.RenderStepped:Connect(function()
+                pcall(function()
+                    local meuHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    local hrpAlvo = alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart")
 
-            local girando = true
-            local conexaoRender
-
-            conexaoRender = RunService.RenderStepped:Connect(function()
-                if girando and rootAlvo and rootAlvo.Parent and onibus and onibus.Parent then
-                    local t = tick() * 25
-                    local rotX = math.rad(t * 50 % 360)
-                    local rotY = math.rad(t * 80 % 360)
-                    local rotZ = math.rad(t * 30 % 360)
-                    onibus:PivotTo(rootAlvo.CFrame * CFrame.Angles(rotX, rotY, rotZ))
-                else
-                    if conexaoRender then conexaoRender:Disconnect() end
-                end
+                    if meuHrp and hrpAlvo then
+                        meuHrp.CFrame = hrpAlvo.CFrame * CFrame.new(0, 0, 1.5)
+                    else
+                        if conexaoAttach then conexaoAttach:Disconnect() end
+                    end
+                end)
             end)
-
-            local conexaoSentou
-            conexaoSentou = humAlvo.Seated:Connect(function(isSeated, seat)
-                if isSeated and seat and seat:IsDescendantOf(onibus) then
-                    girando = false
-                    if conexaoRender then conexaoRender:Disconnect() end
-                    Notify("Troll", "Alvo capturado! Enviando pro void...", 3)
-
-                    task.wait(0.05)
-                    onibus:PivotTo(CFrame.new(rootAlvo.Position.X, -5000, rootAlvo.Position.Z))
-
-                    if conexaoSentou then conexaoSentou:Disconnect() end
-                    busAtivo = false
-                end
-            end)
-
-            task.delay(30, function()
-                girando = false
-                busAtivo = false
-                if conexaoRender then conexaoRender:Disconnect() end
-                if conexaoSentou then conexaoSentou:Disconnect() end
-            end)
-        end)
+        else
+            if conexaoAttach then
+                conexaoAttach:Disconnect()
+                conexaoAttach = nil
+            end
+            Notify("Troll", "Soltou do alvo", 2)
+        end
     end
 })
 
+-- ----------------------------------------------------------
+-- 5. FLING ALL PROPS
+-- ----------------------------------------------------------
 UI.Button(Tabs.Troll, {
-    Name = "⏹️ Parar Ônibus",
+    Name = "🌀 Girar Todos os Props (Fling Props)",
     Callback = function()
-        busAtivo = false
-        Notify("Troll", "Ônibus parado", 2)
+        pcall(function()
+            local WorkspaceCom = Workspace:FindFirstChild("WorkspaceCom")
+            if WorkspaceCom then
+                for _, container in ipairs(WorkspaceCom:GetChildren()) do
+                    for _, prop in ipairs(container:GetChildren()) do
+                        local remote = prop:FindFirstChild("SetCurrentCFrame")
+                        if remote then
+                            task.spawn(function()
+                                for i = 1, 10 do
+                                    remote:InvokeServer(CFrame.new(prop:GetPivot().Position) * CFrame.Angles(0, math.rad(i * 36), 0))
+                                    task.wait(0.05)
+                                end
+                            end)
+                        end
+                    end
+                end
+            end
+        end)
+        Notify("Troll", "Props rotacionados!", 2)
     end
 })
+
 -- ==========================================================
 -- 📦 SISTEMA DE PROPS COMPLETO (Kill / Bring / All)
 -- ==========================================================
