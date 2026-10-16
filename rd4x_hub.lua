@@ -1026,7 +1026,6 @@ local Tabs = {
     Teleportes = CreateTab("Teleportes"),
     Config = CreateTab("Config")
 }
-})
 ShowTab("Informações")
 UI.Paragraph(Tabs.SomAll, {
     Title = "⚠️ Aviso do RD4X!",
@@ -1477,7 +1476,7 @@ UI.Button(Tabs.Servidor, { Name = "🔄 Atualizar Lista", Callback = function()
     local novaLista = {}
     for _, p in ipairs(Players:GetPlayers()) do table.insert(novaLista, p.Name) end
     listaJogadoresServidor = novaLista
-    dropdownServidorList:Refresh(Lista Jogadores Servidor)
+    dropdownServidorList:Refresh(listaJogadoresServidor)
 end})
 
 UI.Button(Tabs.Servidor, { Name = "👁️ Ver Câmera", Callback = function()
