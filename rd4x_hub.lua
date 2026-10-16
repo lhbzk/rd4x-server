@@ -259,6 +259,7 @@ task.spawn(function()
 end)
 
 task.delay(8.2, function()
+        _G.RD4X_Loading_Completo = true
     TweenService:Create(bgLoad, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
     TweenService:Create(container, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
     TweenService:Create(titulo, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
@@ -3225,7 +3226,7 @@ task.spawn(function()
     end
 end)
 -- ==========================================================
--- 🔒 SEGUNDO MENU VIP/ADMIN (abre automático pra whitelist)
+-- 🔒 SEGUNDO MENU VIP/ADMIN
 -- ==========================================================
 if UsuarioAutorizado then
 
@@ -3238,31 +3239,32 @@ if UsuarioAutorizado then
     ScreenGuiVIP.DisplayOrder = 1000
     ScreenGuiVIP.Parent = CoreGui
     
+    -- ⭐ Painel MENOR: 480x340
     local MainFrameVIP = Instance.new("Frame", ScreenGuiVIP)
     MainFrameVIP.Name = "MainFrameVIP"
-    MainFrameVIP.Size = UDim2.new(0, 560, 0, 400)
-    MainFrameVIP.Position = UDim2.new(0.5, -280, 0.5, -200)
+    MainFrameVIP.Size = UDim2.new(0, 480, 0, 340)
+    MainFrameVIP.Position = UDim2.new(0.5, -240, 0.5, -170)
     MainFrameVIP.BackgroundColor3 = COR_FUNDO
     MainFrameVIP.BackgroundTransparency = TRANSP_FUNDO
     MainFrameVIP.BorderSizePixel = 0
     MainFrameVIP.ClipsDescendants = true
     MainFrameVIP.ZIndex = 1
-    MainFrameVIP.Visible = true
+    MainFrameVIP.Visible = false   -- 👈 começa invisível
+    MainFrameVIP.Active = false    -- 👈 evita conflito de drag
     
     local cornerVIP = Instance.new("UICorner", MainFrameVIP)
     cornerVIP.CornerRadius = UDim.new(0, 10)
     
-    local strokeVIP = Instance.new("UIStroke", MainFrameVIP)
-    strokeVIP.Color = COR_VERDE
-    strokeVIP.Thickness = 1.5
-    strokeVIP.Transparency = 0.2
+    -- ❌ SEM borda verde (removi o UIStroke)
     
-    -- Bolhas do menu VIP
+    -- 🫧 Bolhas coloridas do menu VIP
     local BolhasVIP = Instance.new("Frame", MainFrameVIP)
+    BolhasVIP.Name = "BolhasVIP"
     BolhasVIP.Size = UDim2.new(1, 0, 1, 0)
     BolhasVIP.BackgroundTransparency = 1
     BolhasVIP.ClipsDescendants = true
     BolhasVIP.ZIndex = 0
+    BolhasVIP.Active = false
     
     task.spawn(function()
         while BolhasVIP.Parent do
@@ -3281,8 +3283,15 @@ if UsuarioAutorizado then
             b.BackgroundTransparency = math.random(15, 40) / 100
             b.BorderSizePixel = 0
             b.ZIndex = 0
+            
             local c = Instance.new("UICorner", b)
             c.CornerRadius = UDim.new(1, 0)
+            
+            local strokeB = Instance.new("UIStroke", b)
+            strokeB.Color = Color3.fromRGB(255, 255, 255)
+            strokeB.Thickness = 1.5
+            strokeB.Transparency = 0.3
+            
             local tween = TweenService:Create(b, TweenInfo.new(math.random(6, 12), Enum.EasingStyle.Linear), {
                 Position = UDim2.new(b.Position.X.Scale, math.random(-60, 60), 0, -20),
                 BackgroundTransparency = 1
@@ -3310,7 +3319,7 @@ if UsuarioAutorizado then
     cIVIP.CornerRadius = UDim.new(1, 0)
     
     local TitleVIP = Instance.new("TextLabel", HeaderVIP)
-    TitleVIP.Size = UDim2.new(0, 320, 0, 38)
+    TitleVIP.Size = UDim2.new(0, 300, 0, 38)
     TitleVIP.Position = UDim2.new(0, 34, 0, 0)
     TitleVIP.BackgroundTransparency = 1
     TitleVIP.Text = "🔒 Rd4X Hub VIP $ 「 Exclusivo 」"
@@ -3321,8 +3330,8 @@ if UsuarioAutorizado then
     TitleVIP.ZIndex = 6
     
     local BadgeVIP = Instance.new("TextLabel", HeaderVIP)
-    BadgeVIP.Size = UDim2.new(0, 80, 0, 38)
-    BadgeVIP.Position = UDim2.new(1, -100, 0, 0)
+    BadgeVIP.Size = UDim2.new(0, 60, 0, 38)
+    BadgeVIP.Position = UDim2.new(1, -90, 0, 0)
     BadgeVIP.BackgroundTransparency = 1
     BadgeVIP.Text = "⭐ VIP"
     BadgeVIP.TextColor3 = COR_VERDE
@@ -3331,7 +3340,7 @@ if UsuarioAutorizado then
     BadgeVIP.TextXAlignment = Enum.TextXAlignment.Right
     BadgeVIP.ZIndex = 6
     
-    -- Botão MINIMIZAR (sem fechar)
+    -- Botão MINIMIZAR
     local MinimizeVIP = Instance.new("TextButton", HeaderVIP)
     MinimizeVIP.Size = UDim2.new(0, 20, 0, 20)
     MinimizeVIP.Position = UDim2.new(1, -26, 0, 9)
@@ -3352,7 +3361,7 @@ if UsuarioAutorizado then
     
     -- Sidebar VIP
     local SidebarVIP = Instance.new("ScrollingFrame", MainFrameVIP)
-    SidebarVIP.Size = UDim2.new(0, 150, 1, -38)
+    SidebarVIP.Size = UDim2.new(0, 130, 1, -38)
     SidebarVIP.Position = UDim2.new(0, 0, 0, 38)
     SidebarVIP.BackgroundColor3 = COR_SIDEBAR
     SidebarVIP.BackgroundTransparency = TRANSP_SIDEBAR
@@ -3407,8 +3416,8 @@ if UsuarioAutorizado then
         c.CornerRadius = UDim.new(0, 6)
         
         local content = Instance.new("ScrollingFrame", MainFrameVIP)
-        content.Size = UDim2.new(1, -162, 1, -50)
-        content.Position = UDim2.new(0, 156, 0, 44)
+        content.Size = UDim2.new(1, -142, 1, -50)
+        content.Position = UDim2.new(0, 136, 0, 44)
         content.BackgroundTransparency = 1
         content.BorderSizePixel = 0
         content.ScrollBarThickness = 3
@@ -3429,44 +3438,47 @@ if UsuarioAutorizado then
         return content
     end
     
-    -- Cria a aba Admin
     local TabsVIP = {
         Admin = CreateTabVIP("👑 Admin"),
     }
     
     ShowTabVIP("👑 Admin")
     
-    -- Arrastar MainFrameVIP
-    local dragVIP, startVIP, posVIP
+    -- 🎯 Drag SEPARADO (não conflita com o menu principal)
+    local dragVIP = false
+    local startVIP = nil
+    local posVIP = nil
+    
     MainFrameVIP.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragVIP = true
             startVIP = input.Position
             posVIP = MainFrameVIP.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragVIP = false end
+                if input.UserInputState == Enum.UserInputState.End then 
+                    dragVIP = false 
+                end
             end)
         end
     end)
-    MainFrameVIP.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            if dragVIP then
-                local delta = input.Position - startVIP
-                MainFrameVIP.Position = UDim2.new(posVIP.X.Scale, posVIP.X.Offset + delta.X, posVIP.Y.Scale, posVIP.Y.Offset + delta.Y)
-            end
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragVIP and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - startVIP
+            MainFrameVIP.Position = UDim2.new(posVIP.X.Scale, posVIP.X.Offset + delta.X, posVIP.Y.Scale, posVIP.Y.Offset + delta.Y)
         end
     end)
     
     -- Botão MINIMIZAR
     local vipMinimizado = false
-    local alturaVIPNormal = 400
+    local alturaVIPNormal = 340
     local alturaVIPMinimizada = 38
     
     MinimizeVIP.MouseButton1Click:Connect(function()
         vipMinimizado = not vipMinimizado
         if vipMinimizado then
             TweenService:Create(MainFrameVIP, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 560, 0, alturaVIPMinimizada)
+                Size = UDim2.new(0, 480, 0, alturaVIPMinimizada)
             }):Play()
             SidebarVIP.Visible = false
             for _, c in pairs(TabFramesVIP) do c.Visible = false end
@@ -3474,7 +3486,7 @@ if UsuarioAutorizado then
             MinimizeVIP.TextColor3 = COR_VERDE
         else
             TweenService:Create(MainFrameVIP, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 560, 0, alturaVIPNormal)
+                Size = UDim2.new(0, 480, 0, alturaVIPNormal)
             }):Play()
             task.wait(0.35)
             SidebarVIP.Visible = true
@@ -3552,64 +3564,11 @@ if UsuarioAutorizado then
         Notify("Admin", "Kick enviado.", 2)
     end})
 
-    UI.Button(TabsVIP.Admin, { Name = "Desconectar", Callback = function()
-        local alvo = Players:FindFirstChild(AlvoSelecionado)
-        if alvo then
-            pcall(function()
-                if alvo == LocalPlayer then
-                    LocalPlayer:Kick("Desconectado pelo RD4X Hub")
-                else
-                    for i = 1, 100 do
-                        task.spawn(function()
-                            local s = Instance.new("RemoteEvent", ReplicatedStorage)
-                            s:FireServer(string.rep("a", 999999))
-                        end)
-                    end
-                end
-            end)
-            Notify("Admin", "Desconectado.", 2)
-        end
-    end})
-
-    UI.Button(TabsVIP.Admin, { Name = "Kick Personalizado", Callback = function()
-        local alvo = Players:FindFirstChild(AlvoSelecionado)
-        if alvo and alvo == LocalPlayer then
-            LocalPlayer:Kick("Você foi banido permanentemente por um Administrador.\nTempo : 34 dias")
-        end
-        Notify("Admin", "Kick personalizado acionado.", 3)
-    end})
-
-    UI.Button(TabsVIP.Admin, { Name = "Crash", Callback = function()
-        local alvo = Players:FindFirstChild(AlvoSelecionado)
-        if alvo == LocalPlayer then while true do end end
-        Notify("Admin", "Crash acionado.", 2)
-    end})
-
     UI.Button(TabsVIP.Admin, { Name = "Kill", Callback = function()
         local alvo = Players:FindFirstChild(AlvoSelecionado)
         if alvo and alvo.Character and alvo.Character:FindFirstChild("Humanoid") then
             alvo.Character.Humanoid.Health = 0
             Notify("Admin", "Kill executado.", 2)
-        end
-    end})
-
-    UI.Button(TabsVIP.Admin, { Name = "Kill plus", Callback = function()
-        local alvo = Players:FindFirstChild(AlvoSelecionado)
-        if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = alvo.Character.HumanoidRootPart
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, 150, 0)
-            task.wait(0.2)
-            alvo.Character.Humanoid.Health = 0
-            Notify("Admin", "Kill Plus executado!", 2)
-        end
-    end})
-
-    UI.Button(TabsVIP.Admin, { Name = "Explode", Callback = function()
-        local alvo = Players:FindFirstChild(AlvoSelecionado)
-        if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") then
-            local p = Instance.new("Explosion", Workspace)
-            p.Position = alvo.Character.HumanoidRootPart.Position
-            Notify("Admin", "Explosão enviada!", 2)
         end
     end})
 
@@ -3656,19 +3615,19 @@ if UsuarioAutorizado then
         Notify("Admin", "Jaula removida!", 2)
     end})
 
-    UI.Button(TabsVIP.Admin, { Name = "Teleport", Callback = function()
-        local alvo = Players:FindFirstChild(AlvoSelecionado)
-        if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = alvo.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-            Notify("Admin", "Teleportado.", 2)
-        end
-    end})
-
     UI.Button(TabsVIP.Admin, { Name = "Bring", Callback = function()
         local alvo = Players:FindFirstChild(AlvoSelecionado)
         if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             alvo.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
             Notify("Admin", "Jogador trazido.", 2)
+        end
+    end})
+
+    UI.Button(TabsVIP.Admin, { Name = "Teleport", Callback = function()
+        local alvo = Players:FindFirstChild(AlvoSelecionado)
+        if alvo and alvo.Character and alvo.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = alvo.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+            Notify("Admin", "Teleportado.", 2)
         end
     end})
 
@@ -3702,28 +3661,29 @@ if UsuarioAutorizado then
         Notify("Admin", "Spam desativado.", 2)
     end})
 
-    UI.Input(TabsVIP.Admin, {
-        Name = "Chat player (Texto)",
-        CurrentValue = "",
-        PlaceholderText = "Escreva...",
-        Callback = function(txt) chatPlayerTextoInput = txt end,
-    })
-
-    UI.Button(TabsVIP.Admin, { Name = "Enviar Chat no Alvo", Callback = function()
-        pcall(function()
-            local targs = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-            if targs and chatPlayerTextoInput ~= "" then
-                local say = targs:FindFirstChild("SayMessageRequest")
-                if say then say:FireServer(chatPlayerTextoInput, "All") end
-            end
-        end)
-        Notify("Admin", "Mensagem enviada!", 2)
-    end})
     -- ═══════════════════════════════════════════════════════
-    -- 📌 COLE AQUI O CONTEÚDO DE ADMIN E VIP QUE VOCÊ SALVOU
-    -- Troque Tabs.Admin por TabsVIP.Admin
-    -- Troque Tabs.Vip por TabsVIP.Vip
-    -- Remova o "if not UsuarioAutorizado then ... else"
+    -- 🎬 EFEITO DE ENTRADA (só quando o loading terminar)
     -- ═══════════════════════════════════════════════════════
+    task.spawn(function()
+        -- Espera o loading terminar
+        while not _G.RD4X_Loading_Completo do
+            task.wait(0.1)
+        end
+        
+        -- Aguarda 0.3s pra dar um tempo
+        task.wait(0.3)
+        
+        -- Animação de entrada
+        MainFrameVIP.Visible = true
+        MainFrameVIP.Size = UDim2.new(0, 0, 0, 0)
+        MainFrameVIP.Position = UDim2.new(0.5, 0, 0.5, 0)
+        MainFrameVIP.BackgroundTransparency = 1
+        
+        TweenService:Create(MainFrameVIP, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 480, 0, 340),
+            Position = UDim2.new(0.5, -240, 0.5, -170),
+            BackgroundTransparency = TRANSP_FUNDO
+        }):Play()
+    end)
     
 end
