@@ -241,7 +241,7 @@ task.spawn(function()
     end
 end)
 
-TweenService:Create(barra, TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+TweenService:Create(barra, TweenInfo.new(8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
     Size = UDim2.new(1, 0, 1, 0)
 }):Play()
 
@@ -254,11 +254,11 @@ task.spawn(function()
     }
     for i, msg in ipairs(mensagens) do
         status.Text = msg
-        task.wait(0.5)
+        task.wait(2)
     end
 end)
 
-task.delay(2.2, function()
+task.delay(8.2, function()
     TweenService:Create(bgLoad, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
     TweenService:Create(container, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
     TweenService:Create(titulo, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
