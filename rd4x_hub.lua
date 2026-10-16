@@ -3115,10 +3115,12 @@ UI.Toggle(Tabs.Config, {
     CurrentValue = true,
     Callback = function(v)
         pcall(function()
-            if v then
-                if musicaFundo then musicaFundo:Resume() end
-            else
-                if musicaFundo then musicaFundo:Pause() end
+            if _G.RD4X_MusicaFundo then
+                if v then
+                    _G.RD4X_MusicaFundo:Resume()
+                else
+                    _G.RD4X_MusicaFundo:Pause()
+                end
             end
         end)
     end
@@ -3460,20 +3462,19 @@ Notify("RD4X Hub", "Interface carregada com sucesso!", 4)
 -- ==========================================================
 -- 🎵 MÚSICA DE FUNDO
 -- ==========================================================
-local musicaFundo = Instance.new("Sound", SoundService)
-musicaFundo.SoundId = "rbxassetid://83894877"  -- troque pelo ID
-musicaFundo.Volume = 0.15
-musicaFundo.Looped = true
-musicaFundo:Play()
-
+_G.RD4X_MusicaFundo = Instance.new("Sound", SoundService)
+_G.RD4X_MusicaFundo.SoundId = "rbxassetid://83894877"
+_G.RD4X_MusicaFundo.Volume = 0.15
+_G.RD4X_MusicaFundo.Looped = true
+_G.RD4X_MusicaFundo:Play()
 UI.Button(Tabs.Outros, {
     Name = "🎵 Play/Pause Música",
     Callback = function()
-        if musicaFundo.IsPlaying then
-            musicaFundo:Pause()
+        if _G.RD4X_MusicaFundo.IsPlaying then
+            _G.RD4X_MusicaFundo:Pause()
             Notify("Música", "Música pausada", 2)
         else
-            musicaFundo:Resume()
+            _G.RD4X_MusicaFundo:Resume()
             Notify("Música", "Música tocando", 2)
         end
     end
