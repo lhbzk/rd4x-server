@@ -559,6 +559,7 @@ notifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 notifLayout.Padding = UDim.new(0, 6)
 
 local function Notify(title, content, duration)
+    if _G.RD4X_NotifAtivas == false then return end
     duration = duration or 3
     local frame = Instance.new("Frame", NotifHolder)
     frame.Size = UDim2.new(1, 0, 0, 56)
@@ -695,6 +696,7 @@ function UI.Button(parent, opts)
     end)
     -- Dentro do UI.Button, antes do Callback:
 btn.MouseButton1Click:Connect(function()
+            if _G.RD4X_SomAtivo ~= false then
     pcall(function()
         local som = Instance.new("Sound", SoundService)
         som.SoundId = "rbxassetid://116105996777798"
@@ -3285,7 +3287,234 @@ UI.Toggle(Tabs.Protecao, { Name = "ESP (Ver jogadores)", CurrentValue = false, C
         end
     end
 end})
+-- ==========================================================
+-- ⚙️ ABA CONFIG
+-- ==========================================================
 
+-- Variáveis globais
+_G.RD4X_NotifAtivas = true
+_G.RD4X_SomAtivo = true
+
+-- Variável da borda pulsante (usada no bloco de baixo)
+local bordaPulsando = true
+
+-- ─── SEÇÃO: VISUAL ───
+UI.Paragraph(Tabs.Config, {
+    Title = "🎨 Visual",
+    Content = "Controle os efeitos visuais do hub.",
+    Height = 42
+})
+
+UI.Toggle(Tabs.Config, {
+    Name = "🫧 Bolhas Coloridas",
+    CurrentValue = true,
+    Callback = function(v)
+        bolhasAtivas = v
+        if v then
+            task.spawn(function()
+                while bolhasAtivas and BolhasContainer.Parent do
+                    criarBolha()
+                    task.wait(math.random(8, 30) / 100)
+                end
+            end)
+        end
+    end
+})
+
+UI.Toggle(Tabs.Config, {
+    Name = "💚 Borda Pulsante",
+    CurrentValue = true,
+    Callback = function(v)
+        bordaPulsando = v
+        if not v then
+            strokeMain.Transparency = 0.3
+            strokeMain.Thickness = 1.2
+        end
+    end
+})
+
+-- ─── SEÇÃO: COR DO HUB ───
+UI.Paragraph(Tabs.Config, {
+    Title = "🌈 Cor do Hub",
+    Content = "Escolha a cor de destaque do hub.",
+    Height = 42
+})
+
+local function trocarCorHub(novaCor)
+    COR_VERDE = novaCor
+    
+    for _, gui in ipairs(ScreenGui:GetDescendants()) do
+        pcall(function()
+            if gui:IsA("UIStroke") and (gui.Color == Color3.fromRGB(46, 204, 113) or gui.Color == Color3.fromRGB(240, 240, 245)) then
+                gui.Color = novaCor
+            end
+            if gui:IsA("TextLabel") and gui.TextColor3 == Color3.fromRGB(46, 204, 113) then
+                gui.TextColor3 = novaCor
+            end
+            if gui:IsA("TextButton") and gui.BackgroundColor3 == Color3.fromRGB(46, 204, 113) then
+                gui.BackgroundColor3 = novaCor
+            end
+            if gui:IsA("Frame") and gui.BackgroundColor3 == Color3.fromRGB(46, 204, 113) then
+                gui.BackgroundColor3 = novaCor
+            end
+        end)
+    end
+    
+    Notify("Config", "Cor aplicada!", 2)
+end
+
+UI.Button(Tabs.Config, { Name = "🟢 Verde (padrão)", Callback = function() trocarCorHub(Color3.fromRGB(46, 204, 113)) end })
+UI.Button(Tabs.Config, { Name = "🔵 Azul",           Callback = function() trocarCorHub(Color3.fromRGB(52, 152, 219)) end })
+UI.Button(Tabs.Config, { Name = "🟣 Roxo",           Callback = function() trocarCorHub(Color3.fromRGB(155, 89, 182)) end })
+UI.Button(Tabs.Config, { Name = "🔴 Vermelho",       Callback = function() trocarCorHub(Color3.fromRGB(231, 76, 60)) end })
+UI.Button(Tabs.Config, { Name = "🟡 Amarelo",        Callback = function() trocarCorHub(Color3.fromRGB(241, 196, 15)) end })
+UI.Button(Tabs.Config, { Name = "🟠 Laranja",        Callback = function() trocarCorHub(Color3.fromRGB(230, 126, 34)) end })
+UI.Button(Tabs.Config, { Name = "🩷 Rosa",           Callback = function() trocarCorHub(Color3.fromRGB(255, 105, 180)) end })
+UI.Button(Tabs.Config, { Name = "💠 Turquesa",       Callback = function() trocarCorHub(Color3.fromRGB(26, 188, 156)) end })
+
+-- ─── SEÇÃO: NOTIFICAÇÕES E SONS ───
+UI.Paragraph(Tabs.Config, {
+    Title = "🔔 Notificações & Sons",
+    Content = "Controle os avisos e sons do hub.",
+    Height = 42
+})
+
+UI.Toggle(Tabs.Config, {
+    Name = "🔔 Notificações",
+    CurrentValue = true,
+    Callback = function(v)
+        _G.RD4X_NotifAtivas = v
+        if v then Notify("Config", "Notificações ativadas", 2) end
+    end
+})
+
+UI.Toggle(Tabs.Config, {
+    Name = "🔊 Som de Clique",
+    CurrentValue = true,
+    Callback = function(v)
+        _G.RD4X_SomAtivo = v
+        if v then Notify("Config", "Som ativado", 2) end
+    end
+})
+
+UI.Toggle(Tabs.Config, {
+    Name = "🎵 Música de Fundo",
+    CurrentValue = true,
+    Callback = function(v)
+        pcall(function()
+            if v then
+                if musicaFundo then musicaFundo:Resume() end
+            else
+                if musicaFundo then musicaFundo:Pause() end
+            end
+        end)
+    end
+})
+
+UI.Input(Tabs.Config, {
+    Name = "Volume da Música",
+    CurrentValue = "0.15",
+    PlaceholderText = "0 a 1",
+    Callback = function(v)
+        local n = tonumber(v) or 0.15
+        pcall(function()
+            if musicaFundo then musicaFundo.Volume = n end
+        end)
+    end,
+})
+
+-- ─── SEÇÃO: TRANSPARÊNCIA ───
+UI.Paragraph(Tabs.Config, {
+    Title = "🌫️ Transparência",
+    Content = "Ajuste a transparência do hub.",
+    Height = 42
+})
+
+UI.Input(Tabs.Config, {
+    Name = "Transparência (0-1)",
+    CurrentValue = "0.25",
+    PlaceholderText = "0 = sólido",
+    Callback = function(v)
+        local n = tonumber(v) or 0.25
+        MainFrame.BackgroundTransparency = n
+        Notify("Config", "Transparência: " .. n, 2)
+    end,
+})
+
+-- ─── SEÇÃO: PERFORMANCE ───
+UI.Paragraph(Tabs.Config, {
+    Title = "⚡ Performance",
+    Content = "Reduza efeitos pra melhorar o FPS.",
+    Height = 42
+})
+
+UI.Toggle(Tabs.Config, {
+    Name = "⚡ Modo Leve (desativa efeitos)",
+    CurrentValue = false,
+    Callback = function(v)
+        if v then
+            bolhasAtivas = false
+            bordaPulsando = false
+            strokeMain.Transparency = 0.5
+            Notify("Config", "Modo leve ativado", 2)
+        else
+            bolhasAtivas = true
+            bordaPulsando = true
+            task.spawn(function()
+                while bolhasAtivas and BolhasContainer.Parent do
+                    criarBolha()
+                    task.wait(math.random(8, 30) / 100)
+                end
+            end)
+            Notify("Config", "Modo normal", 2)
+        end
+    end,
+})
+
+UI.Button(Tabs.Config, {
+    Name = "🗑️ Limpar Notificações",
+    Callback = function()
+        for _, notif in ipairs(NotifHolder:GetChildren()) do
+            if notif:IsA("Frame") then notif:Destroy() end
+        end
+    end,
+})
+
+-- ─── SEÇÃO: SISTEMA ───
+UI.Paragraph(Tabs.Config, {
+    Title = "🛠️ Sistema",
+    Content = "Controles gerais do hub.",
+    Height = 42
+})
+
+UI.Button(Tabs.Config, {
+    Name = "❌ Fechar Hub",
+    Callback = function()
+        MainFrame.Visible = false
+        BotaoFlutuante.Visible = true
+    end,
+})
+
+UI.Paragraph(Tabs.Config, {
+    Title = "ℹ️ Sobre",
+    Content = "Rd4X Hub v1.0\nBy Rd4X Team Oficial\nDiscord: discord.gg/Eh8ga7z55",
+    Height = 70
+})
+-- ==========================================================
+-- 💚 BORDA PULSANTE (controlada pela aba Config)
+-- ==========================================================
+task.spawn(function()
+    while MainFrame.Parent do
+        if bordaPulsando then
+            TweenService:Create(strokeMain, TweenInfo.new(1.5), {Transparency = 0.8, Thickness = 2.5}):Play()
+            task.wait(1.5)
+            TweenService:Create(strokeMain, TweenInfo.new(1.5), {Transparency = 0.2, Thickness = 1.2}):Play()
+            task.wait(1.5)
+        else
+            task.wait(0.5)
+        end
+    end
+end) 
 --------------------------------------------------------------------------------
 -- ABA SCRIPTS
 --------------------------------------------------------------------------------
