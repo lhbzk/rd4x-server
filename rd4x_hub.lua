@@ -2766,9 +2766,9 @@ local function executarBringProp(nomeAlvo)
             task.wait(0.8)
             deletarTodosProps()
         end
-    end
+    end)
     return true
-end)
+end
 
 -- ==========================================================
 -- 🔘 BOTÕES DA ABA PROPS
