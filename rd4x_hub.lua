@@ -3399,7 +3399,7 @@ task.spawn(function()
     adText.Size = UDim2.new(1, -20, 1, -80)
     adText.Position = UDim2.new(0, 10, 0, 48)
     adText.BackgroundTransparency = 1
-    adText.Text = "🎉 Bem-vindo ao Rd4X Hub!\n\nEste hub foi lançado a pouco tempo e já está com diversas funções!... Mas, essa é a primeira versão de muitas, por isso, se achar bugs/falhas nos conte no Discord!"
+    adText.Text = "🎉 Bem-vindo ao Rd4X Hub!\n\nEste hub foi lançado a pouco tempo e já está com diversas funções!... Mas, essa é a primeira versão de muitas, por isso, se achar bugs/falhas nos conte no Discord!\n\nPara Desativar a Música de Fundo, vá até a Aba Config-Música de Fundo."
     adText.TextColor3 = COR_TEXTO
     adText.TextSize = 11
     adText.Font = Enum.Font.Gotham
