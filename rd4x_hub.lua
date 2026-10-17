@@ -3133,7 +3133,7 @@ UI.Input(Tabs.Config, {
     Callback = function(v)
         local n = tonumber(v) or 0.15
         pcall(function()
-            if musicaFundo then musicaFundo.Volume = n end
+            if _G.RD4X_MusicaFundo then _G.RD4X_MusicaFundo.Volume = n end
         end)
     end,
 })
@@ -3206,7 +3206,7 @@ UI.Button(Tabs.Config, {
     Name = "❌ Fechar Hub",
     Callback = function()
         MainFrame.Visible = false
-        BotaoFlutuante.Visible = true
+        BotaoFlutuante.Visible = false
     end,
 })
 
@@ -4230,5 +4230,4 @@ UI.Button(TabsVIP.Jumpscare, {
         }):Play()
     end)
     
-end
 end
