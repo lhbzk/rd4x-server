@@ -2768,7 +2768,7 @@ local function executarBringProp(nomeAlvo)
         end
     end
     return true
-end
+end)
 
 -- ==========================================================
 -- 🔘 BOTÕES DA ABA PROPS
