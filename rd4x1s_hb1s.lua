@@ -22,7 +22,7 @@ local LocalPlayer = Players.LocalPlayer
 -- WHITELIST API
 --------------------------------------------------------------------------------
 local MEU_ID_CREATOR = 4200878493
-local API_URL = "https://rd4x-api.onrender.com"
+local API_URL = "botai-rd4x.ronaldoo-sev7n.workers.dev"
 
 local function VerificarWhitelist()
     if LocalPlayer.UserId == MEU_ID_CREATOR then return true end
