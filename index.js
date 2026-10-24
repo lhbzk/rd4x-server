@@ -2,8 +2,8 @@ const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
 
-// Inicializa o SDK do Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Inicializa o SDK do Gemini apenas se a chave existir
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 // --- SERVIDOR WEB & API PARA O ROBLOX ---
 const app = express();
@@ -100,8 +100,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.MessageContent
+        // GatewayIntentBits.GuildMembers foi removido para evitar crash de Intent Privilegiada
     ]
 });
 
@@ -137,7 +137,6 @@ client.once('ready', () => {
         indiceStatus = (indiceStatus + 1) % listaStatus.length;
     }, 15000);
 
-    // Verificação de Expiração
     setInterval(async () => {
         const agora = Date.now();
         const doisDiasEmMs = 2 * 24 * 60 * 60 * 1000;
@@ -173,7 +172,6 @@ client.once('ready', () => {
         }
     }, 60000);
 
-    // Verificação de Inatividade de Tickets
     setInterval(async () => {
         const agora = Date.now();
         const vinteEQuatroHoras = 24 * 60 * 60 * 1000;
@@ -253,7 +251,6 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
-    // --- INÍCIO DOS COMANDOS DO RD4X ---
     if (comando === '!admin_help' || comando === '!adminhelp') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Apenas administradores do **RD4X Hub** podem usar este comando!");
@@ -537,6 +534,12 @@ client.on('messageCreate', async (message) => {
 
     // --- SISTEMA DE IA COM FALLBACK (GEMINI -> GROK) ---
     if (message.mentions.has(client.user) || !comando.startsWith('!')) {
+        
+        // Aviso amigável caso as chaves não estejam configuradas
+        if (!process.env.GEMINI_API_KEY && !process.env.GROK_API_KEY) {
+            return message.reply("⚠️ O sistema de IA não está configurado. O Dono precisa adicionar `GEMINI_API_KEY` ou `GROK_API_KEY` na aba **Ambiente** da hospedagem.");
+        }
+
         try {
             await message.channel.sendTyping();
 
@@ -549,16 +552,20 @@ client.on('messageCreate', async (message) => {
             let respostaIA = "";
 
             // 1ª Tentativa: GEMINI
-            try {
-                const response = await ai.models.generateContent({
-                    model: 'gemini-1.5-flash',
-                    contents: textoUsuario,
-                });
-                respostaIA = response.text;
-            } catch (erroGemini) {
-                console.log("[IA] Gemini falhou ou atingiu o limite. Acionando o Grok...", erroGemini.message);
-                
-                // 2ª Tentativa: GROK (Fallback)
+            if (ai) {
+                try {
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-1.5-flash',
+                        contents: textoUsuario,
+                    });
+                    respostaIA = response.text;
+                } catch (erroGemini) {
+                    console.log("[IA] Gemini falhou. Acionando o Grok...", erroGemini.message);
+                }
+            }
+
+            // 2ª Tentativa: GROK (Só roda se o Gemini falhou ou se não tem a chave dele)
+            if (!respostaIA && process.env.GROK_API_KEY) {
                 try {
                     const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
                         method: "POST",
@@ -567,7 +574,7 @@ client.on('messageCreate', async (message) => {
                             "Authorization": `Bearer ${process.env.GROK_API_KEY}`
                         },
                         body: JSON.stringify({
-                            model: "grok-beta", // Ou o modelo exato que você usava
+                            model: "grok-beta",
                             messages: [{ role: "user", content: textoUsuario }]
                         })
                     });
@@ -576,19 +583,21 @@ client.on('messageCreate', async (message) => {
                     if (grokData.choices && grokData.choices.length > 0) {
                         respostaIA = grokData.choices[0].message.content;
                     } else {
-                        throw new Error("Resposta inválida do Grok");
+                        console.log("Erro Grok:", grokData);
                     }
                 } catch (erroGrok) {
                     console.error("Erro no Grok também:", erroGrok);
-                    respostaIA = "❌ Ambas as IAs estão offline ou atingiram o limite de uso no momento. Tente novamente mais tarde.";
                 }
             }
 
-            await message.reply(respostaIA || "Não consegui gerar uma resposta.");
+            if (respostaIA) {
+                await message.reply(respostaIA);
+            } else {
+                await message.reply("❌ As IAs estão offline ou as chaves de API estão inválidas/sem limite.");
+            }
 
         } catch (erro) {
             console.error("Erro geral na IA:", erro);
-            await message.reply("❌ Ocorreu um erro ao processar sua mensagem.");
         }
     }
 });
