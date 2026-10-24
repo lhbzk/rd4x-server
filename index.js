@@ -1,9 +1,13 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const express = require('express');
+const { GoogleGenAI } = require('@google/genai');
+
+// Inicializa o SDK do Gemini
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // --- SERVIDOR WEB & API PARA O ROBLOX ---
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.SERVER_PORT || process.env.PORT || 3000;
 
 app.use(express.json());
 
@@ -11,7 +15,6 @@ app.get('/', (req, res) => {
     res.send('RD4X Bot está online e ativo!');
 });
 
-// --- ROTA DE WHITELIST COM LOCK DE HWID / DISPOSITIVO ---
 app.get('/api/v2/whitelist', (req, res) => {
     const nickRoblox = req.query.nick || req.query.userid;
     const hwidCliente = req.query.hwid || req.headers['x-hwid'] || "HWID_NAO_ENVIADO";
@@ -49,7 +52,6 @@ app.get('/api/v2/whitelist', (req, res) => {
     return res.json({ success: false, whitelisted: false });
 });
 
-// --- ROTA DE LOGS DE EXECUÇÃO DO HUB NO ROBLOX ---
 app.post('/api/v2/execucoes', async (req, res) => {
     const { nick, jogo } = req.body;
     totalExecucoesGlobais++;
@@ -73,14 +75,14 @@ app.post('/api/v2/execucoes', async (req, res) => {
     return res.json({ success: true, logged: true });
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`[WEB] Servidor web e API rodando na porta ${port}`);
 });
 
 // --- CONFIGURAÇÕES E IDS ---
 const ID_DONO = "1549272865260441631";
 const ID_CARGO_ADMIN = "1549273436705259570";
-const ID_CARGO_CLIENTE = "1549273666951577691"; // Substitua pelo ID real do seu cargo VIP
+const ID_CARGO_CLIENTE = "1549273666951577691"; 
 const CHAVE_PIX = "85777075550";
 const ID_CANAL_LOGS = "1549274555175018587"; 
 const ID_CANAL_AVALIACOES = "1549458044331757660"; 
@@ -98,7 +100,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
     ]
 });
 
@@ -134,6 +137,7 @@ client.once('ready', () => {
         indiceStatus = (indiceStatus + 1) % listaStatus.length;
     }, 15000);
 
+    // Verificação de Expiração
     setInterval(async () => {
         const agora = Date.now();
         const doisDiasEmMs = 2 * 24 * 60 * 60 * 1000;
@@ -169,6 +173,7 @@ client.once('ready', () => {
         }
     }, 60000);
 
+    // Verificação de Inatividade de Tickets
     setInterval(async () => {
         const agora = Date.now();
         const vinteEQuatroHoras = 24 * 60 * 60 * 1000;
@@ -248,6 +253,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.trim().split(/\s+/);
     const comando = args[0].toLowerCase();
 
+    // --- INÍCIO DOS COMANDOS DO RD4X ---
     if (comando === '!admin_help' || comando === '!adminhelp') {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Apenas administradores do **RD4X Hub** podem usar este comando!");
@@ -256,12 +262,10 @@ client.on('messageCreate', async (message) => {
             .setTitle("🛡️ Painel Administrativo — Comandos de Staff")
             .setDescription("Abaixo estão listados os comandos restritos para gerenciamento:")
             .addFields(
-                { name: "🔑 `!liberar [tempo] [nick] [@membro] [valor_opcional]`", value: "Libera whitelist, vincula VIP e registra faturamento." },
+                { name: "🔑 `!liberar [tempo] [nick] [@membro] [valor]`", value: "Libera whitelist, vincula VIP e registra faturamento." },
                 { name: "🔄 `!resetarhwid [nick]`", value: "Reseta o HWID/Aparelho vinculado ao nick do cliente." },
                 { name: "📈 `!financeiro`", value: "Exibe o painel de faturamento e vendas (Exclusivo Dono)." },
                 { name: "🔒 `!retirarpainel [nick]`", value: "Revoga o acesso no Roblox e remove o cargo VIP." },
-                { name: "🚫 `!blacklist [nick/id]`", value: "Bloqueia a pessoa de abrir novos tickets." },
-                { name: "✅ `!unblacklist [nick/id]`", value: "Remove o bloqueio de abertura de tickets." },
                 { name: "❌ `!fechar`", value: "Encerra o ticket, envia transcript e limpa mensagens." }
             )
             .setColor(0x0088ff)
@@ -353,8 +357,14 @@ client.on('messageCreate', async (message) => {
         const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
         if (!eAdmin) return message.reply("❌ Sem permissão!");
 
-        const tempoInput = args[1]?.toLowerCase();
-        const nickRoblox = args[2];
+        let tempoInput = args[1]?.toLowerCase();
+        let nickRoblox = args[2];
+        
+        if (!nickRoblox) {
+            nickRoblox = args[1];
+            tempoInput = "perm"; 
+        }
+
         const mencaoDiscord = message.mentions.members.first();
         const valorComprado = parseFloat(args[4] || args[3]) || 0;
 
@@ -523,6 +533,63 @@ client.on('messageCreate', async (message) => {
             await message.channel.delete().catch(() => {});
         }, 3000);
         return;
+    }
+
+    // --- SISTEMA DE IA COM FALLBACK (GEMINI -> GROK) ---
+    if (message.mentions.has(client.user) || !comando.startsWith('!')) {
+        try {
+            await message.channel.sendTyping();
+
+            let textoUsuario = message.content
+                .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
+                .trim();
+
+            if (!textoUsuario) return;
+
+            let respostaIA = "";
+
+            // 1ª Tentativa: GEMINI
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-1.5-flash',
+                    contents: textoUsuario,
+                });
+                respostaIA = response.text;
+            } catch (erroGemini) {
+                console.log("[IA] Gemini falhou ou atingiu o limite. Acionando o Grok...", erroGemini.message);
+                
+                // 2ª Tentativa: GROK (Fallback)
+                try {
+                    const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${process.env.GROK_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: "grok-beta", // Ou o modelo exato que você usava
+                            messages: [{ role: "user", content: textoUsuario }]
+                        })
+                    });
+                    
+                    const grokData = await grokRes.json();
+                    if (grokData.choices && grokData.choices.length > 0) {
+                        respostaIA = grokData.choices[0].message.content;
+                    } else {
+                        throw new Error("Resposta inválida do Grok");
+                    }
+                } catch (erroGrok) {
+                    console.error("Erro no Grok também:", erroGrok);
+                    respostaIA = "❌ Ambas as IAs estão offline ou atingiram o limite de uso no momento. Tente novamente mais tarde.";
+                }
+            }
+
+            await message.reply(respostaIA || "Não consegui gerar uma resposta.");
+
+        } catch (erro) {
+            console.error("Erro geral na IA:", erro);
+            await message.reply("❌ Ocorreu um erro ao processar sua mensagem.");
+        }
     }
 });
 
