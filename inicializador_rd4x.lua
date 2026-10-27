@@ -1,5 +1,5 @@
 -- ==========================================================
--- 🚀 RD4X LAUNCHER - Premium Interface (v5.0 - ZERO ERROS)
+-- 🚀 RD4X LAUNCHER - Premium Interface (v5.0 - CORRIGIDO)
 -- ==========================================================
 
 -- ╔════════════════════════════════════════════════════════╗
@@ -105,7 +105,7 @@ local function criarLogoConteudo(parent, tamanhoLetra, corLetra, zindex)
 end
 
 -- ─────────────────────────────────────────────────────────
--- LIMPEZA
+-- LIMPEZA E EFEITOS GLOBAIS
 -- ─────────────────────────────────────────────────────────
 for _, nome in ipairs({"RD4XLoading", "RD4XLauncher"}) do
     local antigo = playerGui:FindFirstChild(nome)
@@ -195,15 +195,23 @@ containerLoad.Size = UDim2.new(0, 400, 0, 200)
 containerLoad.Position = UDim2.new(0.5, -200, 0.5, -100)
 containerLoad.BackgroundTransparency = 1
 
-local glowLogo = Instance.new("ImageLabel", containerLoad)
-glowLogo.Size = UDim2.new(0, 160, 0, 160)
-glowLogo.Position = UDim2.new(0.5, -80, 0, -40)
-glowLogo.BackgroundTransparency = 1
-glowLogo.Image = "rbxassetid://1316045217" 
-glowLogo.ImageColor3 = COR_NEON
-glowLogo.ImageTransparency = 0.5
-glowLogo.ZIndex = 1
+-- 🔥 CORREÇÃO: Brilho Feito com Frame e UIGradient (Sem Imagem)
+local glowFrame = Instance.new("Frame", containerLoad)
+glowFrame.Size = UDim2.new(0, 180, 0, 180)
+glowFrame.Position = UDim2.new(0.5, -90, 0, -50)
+glowFrame.BackgroundColor3 = COR_NEON
+glowFrame.BorderSizePixel = 0
+glowFrame.ZIndex = 1
+Instance.new("UICorner", glowFrame).CornerRadius = UDim.new(1, 0)
 
+local glowGradient = Instance.new("UIGradient", glowFrame)
+glowGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.2),
+    NumberSequenceKeypoint.new(0.5, 0.6),
+    NumberSequenceKeypoint.new(1, 1)
+})
+
+-- Logo (Agora fica sobre o brilho e sem fundo quadrado)
 local logoFrame = Instance.new("Frame", containerLoad)
 logoFrame.Size = UDim2.new(0, 70, 0, 70)
 logoFrame.Position = UDim2.new(0.5, -35, 0, 0)
@@ -282,9 +290,9 @@ TweenService:Create(barBackground, introTween, {BackgroundTransparency = 0}):Pla
 
 task.spawn(function()
     while loadingAtivo and loadGui.Parent do
-        TweenService:Create(glowLogo, TweenInfo.new(1.2), {ImageTransparency = 0.2, Size = UDim2.new(0, 170, 0, 170), Position = UDim2.new(0.5, -85, 0, -45)}):Play()
+        TweenService:Create(glowFrame, TweenInfo.new(1.2), {Size = UDim2.new(0, 190, 0, 190), Position = UDim2.new(0.5, -95, 0, -55)}):Play()
         task.wait(1.2)
-        TweenService:Create(glowLogo, TweenInfo.new(1.2), {ImageTransparency = 0.6, Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0.5, -80, 0, -40)}):Play()
+        TweenService:Create(glowFrame, TweenInfo.new(1.2), {Size = UDim2.new(0, 180, 0, 180), Position = UDim2.new(0.5, -90, 0, -50)}):Play()
         task.wait(1.2)
     end
 end)
@@ -314,7 +322,7 @@ task.spawn(function()
     TweenService:Create(barBackground, out, {BackgroundTransparency = 1}):Play()
     TweenService:Create(logoFrame,     out, {BackgroundTransparency = 1}):Play()
     TweenService:Create(sLogo,         out, {Transparency = 1}):Play()
-    TweenService:Create(glowLogo,      out, {ImageTransparency = 1}):Play()
+    TweenService:Create(glowFrame,     out, {BackgroundTransparency = 1}):Play()
 
     loadingAtivo = false
     if musicaLoad then
