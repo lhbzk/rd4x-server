@@ -1,5 +1,5 @@
 -- ==========================================================
--- 🚀 RD4X LAUNCHER - Premium Interface (v4.3 FINAL)
+-- 🚀 RD4X LAUNCHER - Premium Interface (v4.3 FINAL - CORRIGIDO)
 -- ==========================================================
 
 -- ╔════════════════════════════════════════════════════════╗
@@ -17,8 +17,8 @@ local TOQUE_ID           = "84960553590734"
 local TOQUE_VOLUME       = 0.5                
 
 -- 🖼️ ÍCONES DOS BOTÕES
-local ICONE_HOME = "rbxthumb://type=Asset&id=10709790875&w=150&h=150" 
-local ICONE_BOMB = "rbxthumb://type=Asset&id=10709793092&w=150&h=150" 
+local ICONE_HOME  = "rbxthumb://type=Asset&id=10709790875&w=150&h=150" 
+local ICONE_BOMB  = "rbxthumb://type=Asset&id=10709793092&w=150&h=150" 
 local ICONE_CLOSE = "rbxthumb://type=Asset&id=96089977023576&w=150&h=150" 
 
 local Players             = game:GetService("Players")
@@ -31,7 +31,7 @@ local player     = Players.LocalPlayer
 local playerGui  = player:WaitForChild("PlayerGui")
 
 -- ─────────────────────────────────────────────────────────
--- PALETA IDÊNTICA AO HUB PRINCIPAL
+-- PALETA DE CORES
 -- ─────────────────────────────────────────────────────────
 local COR_FUNDO      = Color3.fromRGB(18, 18, 22)   
 local COR_CARD       = Color3.fromRGB(28, 28, 34)   
@@ -43,9 +43,8 @@ local COR_NEON_ESCURO= Color3.fromRGB(120, 10, 30)
 local COR_VERMELHO   = Color3.fromRGB(255, 60, 60)  
 
 -- ─────────────────────────────────────────────────────────
--- HELPERS (CORRIGIDOS)
+-- HELPERS DE NORMALIZAÇÃO
 -- ─────────────────────────────────────────────────────────
--- Para Imagens
 local function normalizarImagem(id)
     if id == nil then return nil end
     id = tostring(id):gsub("%s+", "")
@@ -56,7 +55,6 @@ local function normalizarImagem(id)
     return nil
 end
 
--- Para Áudios
 local function normalizarSom(id)
     if id == nil then return nil end
     id = tostring(id):gsub("%s+", "")
@@ -67,7 +65,7 @@ local function normalizarSom(id)
     return nil
 end
 
-local LOGO_IMAGEM = normalizarImagem(LOGO_IMAGE_ID)
+local LOGO_IMAGEM  = normalizarImagem(LOGO_IMAGE_ID)
 local MUSICA_ASSET = normalizarSom(MUSICA_ID)
 local TOQUE_ASSET  = normalizarSom(TOQUE_ID)
 
@@ -122,10 +120,10 @@ blur.Size = 0
 blur.Parent = Lighting
 
 -- ─────────────────────────────────────────────────────────
--- LINKS + DETECÇÃO
+-- LINKS E DETECÇÃO
 -- ─────────────────────────────────────────────────────────
-local URL_BROOKHAVEN  = "https://raw.githubusercontent.com/lhbzk/Loser/refs/heads/main/rd4x_hubScp.lua"
-local URL_PASS_EXPLODE= "https://raw.githubusercontent.com/lhbzk/rd4x-server/refs/heads/main/rd4x_bomb.lua"
+local URL_BROOKHAVEN   = "https://raw.githubusercontent.com/lhbzk/Loser/refs/heads/main/rd4x_hubScp.lua"
+local URL_PASS_EXPLODE = "https://raw.githubusercontent.com/lhbzk/rd4x-server/refs/heads/main/rd4x_bomb.lua"
 
 local idJogo, nomeJogo = game.PlaceId, ""
 pcall(function()
@@ -172,7 +170,7 @@ bolhasLoad.ClipsDescendants = true
 
 local loadingAtivo = true
 task.spawn(function()
-    while loadingAtivo do
+    while loadingAtivo and loadGui.Parent do
         local b = Instance.new("Frame", bolhasLoad)
         local t = math.random(4, 12)
         b.Size = UDim2.new(0, t, 0, t)
@@ -215,7 +213,6 @@ logoFrame.BorderSizePixel = 0
 logoFrame.ZIndex = 2
 Instance.new("UICorner", logoFrame).CornerRadius = UDim.new(1, 0)
 
--- 🔥 CORRIGIDO AQUI (sLogo em vez de s)
 local sLogo = Instance.new("UIStroke", logoFrame)
 sLogo.Color = COR_NEON
 sLogo.Thickness = 2
@@ -284,7 +281,7 @@ TweenService:Create(statusLoad,    introTween, {TextTransparency = 0}):Play()
 TweenService:Create(barBackground, introTween, {BackgroundTransparency = 0}):Play()
 
 task.spawn(function()
-    while loadingAtivo do
+    while loadingAtivo and loadGui.Parent do
         TweenService:Create(glowLogo, TweenInfo.new(1.2), {ImageTransparency = 0.2, Size = UDim2.new(0, 170, 0, 170), Position = UDim2.new(0.5, -85, 0, -45)}):Play()
         task.wait(1.2)
         TweenService:Create(glowLogo, TweenInfo.new(1.2), {ImageTransparency = 0.6, Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0.5, -80, 0, -40)}):Play()
@@ -369,7 +366,7 @@ task.spawn(function()
     bolhasMenu.ZIndex = 1
 
     task.spawn(function()
-        while launcherAtivo do
+        while launcherAtivo and screenGui.Parent do
             local b = Instance.new("Frame", bolhasMenu)
             local t = math.random(5, 15)
             local x = math.random(5, 95) / 100
@@ -385,7 +382,7 @@ task.spawn(function()
                 BackgroundTransparency = 1
             })
             tw:Play()
-            tw.Completed:Connect(function() if b then b:Destroy() end)
+            tw.Completed:Connect(function() if b then b:Destroy() end end)
             task.wait(math.random(15, 40) / 100)
         end
     end)
