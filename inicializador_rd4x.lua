@@ -1,5 +1,5 @@
 -- ==========================================================
--- 🚀 RD4X LAUNCHER - Premium Interface (v4.1 Corrigida)
+-- 🚀 RD4X LAUNCHER - Premium Interface (v4.3 FINAL)
 -- ==========================================================
 
 -- ╔════════════════════════════════════════════════════════╗
@@ -43,8 +43,9 @@ local COR_NEON_ESCURO= Color3.fromRGB(120, 10, 30)
 local COR_VERMELHO   = Color3.fromRGB(255, 60, 60)  
 
 -- ─────────────────────────────────────────────────────────
--- HELPERS
+-- HELPERS (CORRIGIDOS)
 -- ─────────────────────────────────────────────────────────
+-- Para Imagens
 local function normalizarImagem(id)
     if id == nil then return nil end
     id = tostring(id):gsub("%s+", "")
@@ -55,9 +56,20 @@ local function normalizarImagem(id)
     return nil
 end
 
+-- Para Áudios
+local function normalizarSom(id)
+    if id == nil then return nil end
+    id = tostring(id):gsub("%s+", "")
+    if id == "" then return nil end
+    if id:find("rbxassetid://") then return id end
+    local num = id:match("%d+")
+    if num then return "rbxassetid://" .. num end
+    return nil
+end
+
 local LOGO_IMAGEM = normalizarImagem(LOGO_IMAGE_ID)
-local MUSICA_ASSET = normalizarImagem(MUSICA_ID)
-local TOQUE_ASSET  = normalizarImagem(TOQUE_ID)
+local MUSICA_ASSET = normalizarSom(MUSICA_ID)
+local TOQUE_ASSET  = normalizarSom(TOQUE_ID)
 
 local function tocarToque()
     if not TOQUE_ASSET then return end
@@ -203,6 +215,7 @@ logoFrame.BorderSizePixel = 0
 logoFrame.ZIndex = 2
 Instance.new("UICorner", logoFrame).CornerRadius = UDim.new(1, 0)
 
+-- 🔥 CORRIGIDO AQUI (sLogo em vez de s)
 local sLogo = Instance.new("UIStroke", logoFrame)
 sLogo.Color = COR_NEON
 sLogo.Thickness = 2
@@ -330,7 +343,7 @@ task.spawn(function()
     local mainBackground = Instance.new("Frame", screenGui)
     mainBackground.Size = UDim2.new(1, 0, 1, 0)
     mainBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    mainBackground.BackgroundTransparency = 1
+    mainBackground.BackgroundTransparency = 0.5
     mainBackground.BorderSizePixel = 0
 
     TweenService:Create(blur, TweenInfo.new(0.6), {Size = 20}):Play()
@@ -444,7 +457,7 @@ task.spawn(function()
     local abaBar = Instance.new("Frame", launcherFrame)
     abaBar.Size = UDim2.new(1, -30, 0, 42)
     abaBar.Position = UDim2.new(0, 15, 0, 75)
-    abaBar.BackgroundColor3 = COR_CARD -- ✅ CORRIGIDO AQUI
+    abaBar.BackgroundColor3 = COR_CARD 
     abaBar.BackgroundTransparency = 0.3
     abaBar.BorderSizePixel = 0
     abaBar.ZIndex = 2
