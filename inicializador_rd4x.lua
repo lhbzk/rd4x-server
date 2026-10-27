@@ -114,7 +114,7 @@ end
 -- ─────────────────────────────────────────────────────────
 -- LINKS + DETECÇÃO DE JOGO
 -- ─────────────────────────────────────────────────────────
-local URL_BROOKHAVEN  = "loadstring(game:HttpGet("https://raw.githubusercontent.com/lhbzk/Loser/refs/heads/main/rd4x_hubScp.lua"))()"
+local URL_BROOKHAVEN  = "https://raw.githubusercontent.com/lhbzk/Loser/refs/heads/main/rd4x_hubScp.lua"
 local URL_PASS_EXPLODE= "https://raw.githubusercontent.com/lhbzk/rd4x-server/refs/heads/main/rd4x_bomb.lua"
 
 local idJogo, nomeJogo = game.PlaceId, ""
