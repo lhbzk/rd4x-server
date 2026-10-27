@@ -1,22 +1,19 @@
 -- ==========================================================
--- 🚀 RD4X LAUNCHER - Premium Interface (v4.3 FINAL - CORRIGIDO)
+-- 🚀 RD4X LAUNCHER - Premium Interface (v5.0 - ZERO ERROS)
 -- ==========================================================
 
 -- ╔════════════════════════════════════════════════════════╗
--- ║  ⚙️ CONFIGURAÇÃO RÁPIDA                                ║
+-- ║  ⚙️ CONFIGURAÇÃO                                        ║
 -- ╚════════════════════════════════════════════════════════╝
 local LOGO_IMAGE_ID      = "109276734890323"     
 local LOGO_LETRA         = "R"    
-local LOGO_NO_MENU       = true   
 local MENU_TRANSPARENCIA = 0.25   
 
--- 🎵 ÁUDIO
 local MUSICA_ID          = "116105996777798"  
 local MUSICA_VOLUME      = 0.5                
 local TOQUE_ID           = "84960553590734"   
 local TOQUE_VOLUME       = 0.5                
 
--- 🖼️ ÍCONES DOS BOTÕES
 local ICONE_HOME  = "rbxthumb://type=Asset&id=10709790875&w=150&h=150" 
 local ICONE_BOMB  = "rbxthumb://type=Asset&id=10709793092&w=150&h=150" 
 local ICONE_CLOSE = "rbxthumb://type=Asset&id=96089977023576&w=150&h=150" 
@@ -31,7 +28,7 @@ local player     = Players.LocalPlayer
 local playerGui  = player:WaitForChild("PlayerGui")
 
 -- ─────────────────────────────────────────────────────────
--- PALETA DE CORES
+-- PALETA PREMIUM (CARMESIM)
 -- ─────────────────────────────────────────────────────────
 local COR_FUNDO      = Color3.fromRGB(18, 18, 22)   
 local COR_CARD       = Color3.fromRGB(28, 28, 34)   
@@ -43,7 +40,7 @@ local COR_NEON_ESCURO= Color3.fromRGB(120, 10, 30)
 local COR_VERMELHO   = Color3.fromRGB(255, 60, 60)  
 
 -- ─────────────────────────────────────────────────────────
--- HELPERS DE NORMALIZAÇÃO
+-- HELPERS
 -- ─────────────────────────────────────────────────────────
 local function normalizarImagem(id)
     if id == nil then return nil end
@@ -108,19 +105,22 @@ local function criarLogoConteudo(parent, tamanhoLetra, corLetra, zindex)
 end
 
 -- ─────────────────────────────────────────────────────────
--- LIMPEZA E EFEITOS GLOBAIS
+-- LIMPEZA
 -- ─────────────────────────────────────────────────────────
 for _, nome in ipairs({"RD4XLoading", "RD4XLauncher"}) do
     local antigo = playerGui:FindFirstChild(nome)
     if antigo then antigo:Destroy() end
 end
 
-local blur = Instance.new("BlurEffect")
+local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+if not blur then
+    blur = Instance.new("BlurEffect")
+    blur.Parent = Lighting
+end
 blur.Size = 0
-blur.Parent = Lighting
 
 -- ─────────────────────────────────────────────────────────
--- LINKS E DETECÇÃO
+-- DETECÇÃO DE JOGO E LINKS
 -- ─────────────────────────────────────────────────────────
 local URL_BROOKHAVEN   = "https://raw.githubusercontent.com/lhbzk/Loser/refs/heads/main/rd4x_hubScp.lua"
 local URL_PASS_EXPLODE = "https://raw.githubusercontent.com/lhbzk/rd4x-server/refs/heads/main/rd4x_bomb.lua"
