@@ -1,5 +1,5 @@
 -- ==========================================================
--- 🚀 RD4X LAUNCHER - (Tema Integrado ao Hub Principal)
+-- 🚀 RD4X LAUNCHER - Premium Interface (v4.1 Corrigida)
 -- ==========================================================
 
 -- ╔════════════════════════════════════════════════════════╗
@@ -8,7 +8,7 @@
 local LOGO_IMAGE_ID      = "109276734890323"     
 local LOGO_LETRA         = "R"    
 local LOGO_NO_MENU       = true   
-local MENU_TRANSPARENCIA = 0.25   -- Mesma transparência do MainFrame da Parte 1
+local MENU_TRANSPARENCIA = 0.25   
 
 -- 🎵 ÁUDIO
 local MUSICA_ID          = "116105996777798"  
@@ -16,9 +16,13 @@ local MUSICA_VOLUME      = 0.5
 local TOQUE_ID           = "84960553590734"   
 local TOQUE_VOLUME       = 0.5                
 
+-- 🖼️ ÍCONES DOS BOTÕES
+local ICONE_HOME = "rbxthumb://type=Asset&id=10709790875&w=150&h=150" 
+local ICONE_BOMB = "rbxthumb://type=Asset&id=10709793092&w=150&h=150" 
+local ICONE_CLOSE = "rbxthumb://type=Asset&id=96089977023576&w=150&h=150" 
+
 local Players             = game:GetService("Players")
 local TweenService        = game:GetService("TweenService")
-local UserInputService    = game:GetService("UserInputService")
 local MarketplaceService  = game:GetService("MarketplaceService")
 local SoundService        = game:GetService("SoundService")
 local Lighting            = game:GetService("Lighting")
@@ -29,14 +33,14 @@ local playerGui  = player:WaitForChild("PlayerGui")
 -- ─────────────────────────────────────────────────────────
 -- PALETA IDÊNTICA AO HUB PRINCIPAL
 -- ─────────────────────────────────────────────────────────
-local COR_FUNDO      = Color3.fromRGB(18, 18, 22)   -- COR_FUNDO do Hub
-local COR_CARD       = Color3.fromRGB(28, 28, 34)   -- COR_SECUNDARIA do Hub
-local COR_BORDA      = Color3.fromRGB(40, 40, 48)   -- COR_BORDA do Hub
-local COR_TEXTO      = Color3.fromRGB(240, 240, 245) -- COR_TEXTO do Hub
-local COR_TEXTO_CINZA= Color3.fromRGB(140, 140, 150) -- COR_TEXTO_CINZA do Hub
-local COR_NEON       = Color3.fromRGB(220, 20, 60)  -- COR_VERMELHO do Hub (Carmesim)
-local COR_NEON_ESCURO= Color3.fromRGB(120, 10, 30)  -- Vermelho mais escuro para abas ativas
-local COR_VERMELHO   = Color3.fromRGB(255, 60, 60)  -- Vermelho claro para hover de fechar
+local COR_FUNDO      = Color3.fromRGB(18, 18, 22)   
+local COR_CARD       = Color3.fromRGB(28, 28, 34)   
+local COR_BORDA      = Color3.fromRGB(40, 40, 48)   
+local COR_TEXTO      = Color3.fromRGB(240, 240, 245) 
+local COR_TEXTO_CINZA= Color3.fromRGB(140, 140, 150) 
+local COR_NEON       = Color3.fromRGB(220, 20, 60)  
+local COR_NEON_ESCURO= Color3.fromRGB(120, 10, 30)  
+local COR_VERMELHO   = Color3.fromRGB(255, 60, 60)  
 
 -- ─────────────────────────────────────────────────────────
 -- HELPERS
@@ -45,9 +49,9 @@ local function normalizarImagem(id)
     if id == nil then return nil end
     id = tostring(id):gsub("%s+", "")
     if id == "" then return nil end
-    if id:find("rbxassetid://") or id:find("http") then return id end
+    if id:find("rbxassetid://") or id:find("rbxthumb://") or id:find("http") then return id end
     local num = id:match("%d+")
-    if num then return "rbxassetid://" .. num end
+    if num then return "rbxthumb://type=Asset&id=" .. num .. "&w=150&h=150" end
     return nil
 end
 
@@ -101,7 +105,6 @@ for _, nome in ipairs({"RD4XLoading", "RD4XLauncher"}) do
     if antigo then antigo:Destroy() end
 end
 
--- Blur para o fundo
 local blur = Instance.new("BlurEffect")
 blur.Size = 0
 blur.Parent = Lighting
@@ -126,7 +129,7 @@ elseif nomeJogo:find("pass") or nomeJogo:find("explode") or nomeJogo:find("bomba
 end
 
 -- ═════════════════════════════════════════════════════════
--- 🎬 1. TELA DE LOADING (TEMA DO HUB)
+-- 🎬 1. TELA DE LOADING
 -- ═════════════════════════════════════════════════════════
 local loadGui = Instance.new("ScreenGui")
 loadGui.Name = "RD4XLoading"
@@ -140,7 +143,6 @@ bgLoad.Size = UDim2.new(1, 0, 1, 0)
 bgLoad.BackgroundColor3 = COR_FUNDO
 bgLoad.BorderSizePixel = 0
 
--- Música
 local musicaLoad = nil
 if MUSICA_ASSET then
     musicaLoad = Instance.new("Sound", SoundService)
@@ -151,7 +153,6 @@ if MUSICA_ASSET then
     TweenService:Create(musicaLoad, TweenInfo.new(1), {Volume = MUSICA_VOLUME}):Play()
 end
 
--- Efeito de Bolhas
 local bolhasLoad = Instance.new("Frame", bgLoad)
 bolhasLoad.Size = UDim2.new(1, 0, 1, 0)
 bolhasLoad.BackgroundTransparency = 1
@@ -184,7 +185,6 @@ containerLoad.Size = UDim2.new(0, 400, 0, 200)
 containerLoad.Position = UDim2.new(0.5, -200, 0.5, -100)
 containerLoad.BackgroundTransparency = 1
 
--- Glow Atrás da Logo
 local glowLogo = Instance.new("ImageLabel", containerLoad)
 glowLogo.Size = UDim2.new(0, 160, 0, 160)
 glowLogo.Position = UDim2.new(0.5, -80, 0, -40)
@@ -194,7 +194,6 @@ glowLogo.ImageColor3 = COR_NEON
 glowLogo.ImageTransparency = 0.5
 glowLogo.ZIndex = 1
 
--- Logo
 local logoFrame = Instance.new("Frame", containerLoad)
 logoFrame.Size = UDim2.new(0, 70, 0, 70)
 logoFrame.Position = UDim2.new(0.5, -35, 0, 0)
@@ -211,7 +210,6 @@ sLogo.Transparency = 0.2
 
 criarLogoConteudo(logoFrame, 36, COR_TEXTO, 3)
 
--- Título e Subtítulo
 local titleLoad = Instance.new("TextLabel", containerLoad)
 titleLoad.Size = UDim2.new(1, 0, 0, 36)
 titleLoad.Position = UDim2.new(0, 0, 0, 85)
@@ -234,7 +232,6 @@ subTitleLoad.Font = Enum.Font.GothamSemibold
 subTitleLoad.TextTransparency = 1
 subTitleLoad.ZIndex = 3
 
--- Barra de Progresso
 local barBackground = Instance.new("Frame", containerLoad)
 barBackground.Size = UDim2.new(0.85, 0, 0, 4)
 barBackground.Position = UDim2.new(0.075, 0, 0, 160)
@@ -256,7 +253,6 @@ uiGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 100))
 })
 
--- Status Load
 local statusLoad = Instance.new("TextLabel", containerLoad)
 statusLoad.Size = UDim2.new(1, 0, 0, 20)
 statusLoad.Position = UDim2.new(0, 0, 0, 175)
@@ -268,14 +264,12 @@ statusLoad.Font = Enum.Font.GothamBold
 statusLoad.TextTransparency = 1
 statusLoad.ZIndex = 3
 
--- Animação de Entrada
 local introTween = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 TweenService:Create(titleLoad,     introTween, {TextTransparency = 0}):Play()
 TweenService:Create(subTitleLoad,  introTween, {TextTransparency = 0}):Play()
 TweenService:Create(statusLoad,    introTween, {TextTransparency = 0}):Play()
 TweenService:Create(barBackground, introTween, {BackgroundTransparency = 0}):Play()
 
--- Pulso do Glow
 task.spawn(function()
     while loadingAtivo do
         TweenService:Create(glowLogo, TweenInfo.new(1.2), {ImageTransparency = 0.2, Size = UDim2.new(0, 170, 0, 170), Position = UDim2.new(0.5, -85, 0, -45)}):Play()
@@ -285,7 +279,6 @@ task.spawn(function()
     end
 end)
 
--- Progresso
 task.spawn(function()
     local passos = 100
     local duracao = 3
@@ -303,7 +296,6 @@ task.spawn(function()
     subTitleLoad.Text = "✅ Pronto!"
     task.wait(0.5)
 
-    -- Fade Out
     local out = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(bgLoad,        out, {BackgroundTransparency = 1}):Play()
     TweenService:Create(titleLoad,     out, {TextTransparency = 1}):Play()
@@ -324,7 +316,7 @@ task.spawn(function()
     loadGui:Destroy()
 
     -- ═════════════════════════════════════════════════════
-    -- 🚀 2. LAUNCHER PRINCIPAL (Integrado ao Hub)
+    -- 🚀 2. LAUNCHER PRINCIPAL 
     -- ═════════════════════════════════════════════════════
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "RD4XLauncher"
@@ -335,7 +327,6 @@ task.spawn(function()
 
     local launcherAtivo = true
 
-    -- Fundo escuro
     local mainBackground = Instance.new("Frame", screenGui)
     mainBackground.Size = UDim2.new(1, 0, 1, 0)
     mainBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -344,7 +335,6 @@ task.spawn(function()
 
     TweenService:Create(blur, TweenInfo.new(0.6), {Size = 20}):Play()
 
-    -- Menu Principal
     local launcherFrame = Instance.new("Frame", mainBackground)
     launcherFrame.Size = UDim2.new(0, 520, 0, 380)
     launcherFrame.Position = UDim2.new(0.5, -260, 0.5, -190)
@@ -354,13 +344,11 @@ task.spawn(function()
     launcherFrame.ClipsDescendants = true
     Instance.new("UICorner", launcherFrame).CornerRadius = UDim.new(0, 14)
 
-    -- Borda
     local frameStroke = Instance.new("UIStroke", launcherFrame)
     frameStroke.Color = COR_BORDA
     frameStroke.Thickness = 1.5
     frameStroke.Transparency = 1
 
-    -- Bolhas de fundo do menu (Vermelhas)
     local bolhasMenu = Instance.new("Frame", launcherFrame)
     bolhasMenu.Size = UDim2.new(1, 0, 1, 0)
     bolhasMenu.BackgroundTransparency = 1
@@ -402,6 +390,7 @@ task.spawn(function()
     headerIcone.BorderSizePixel = 0
     headerIcone.ZIndex = 3
     Instance.new("UICorner", headerIcone).CornerRadius = UDim.new(1, 0)
+    
     local strokeIcone = Instance.new("UIStroke", headerIcone)
     strokeIcone.Color = COR_NEON
     strokeIcone.Thickness = 1.5
@@ -432,22 +421,18 @@ task.spawn(function()
     subTitle.TextTransparency = 1
     subTitle.ZIndex = 3
 
-    -- Botão Fechar
-    local closeBtn = Instance.new("TextButton", header)
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -45, 0.5, -15)
+    local closeBtn = Instance.new("ImageButton", header)
+    closeBtn.Size = UDim2.new(0, 20, 0, 20)
+    closeBtn.Position = UDim2.new(1, -35, 0.5, -10)
     closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = COR_TEXTO_CINZA
-    closeBtn.TextSize = 16
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.AutoButtonColor = false
+    closeBtn.Image = ICONE_CLOSE
+    closeBtn.ImageColor3 = COR_TEXTO_CINZA
     closeBtn.ZIndex = 3
+    closeBtn.AutoButtonColor = false
 
-    closeBtn.MouseEnter:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.15), {TextColor3 = COR_VERMELHO}):Play() end)
-    closeBtn.MouseLeave:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.15), {TextColor3 = COR_TEXTO_CINZA}):Play() end)
+    closeBtn.MouseEnter:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.15), {ImageColor3 = COR_VERMELHO}):Play() end)
+    closeBtn.MouseLeave:Connect(function() TweenService:Create(closeBtn, TweenInfo.new(0.15), {ImageColor3 = COR_TEXTO_CINZA}):Play() end)
 
-    -- Linha divisória
     local headerLine = Instance.new("Frame", launcherFrame)
     headerLine.Size = UDim2.new(1, -30, 0, 1)
     headerLine.Position = UDim2.new(0, 15, 0, 60)
@@ -459,7 +444,7 @@ task.spawn(function()
     local abaBar = Instance.new("Frame", launcherFrame)
     abaBar.Size = UDim2.new(1, -30, 0, 42)
     abaBar.Position = UDim2.new(0, 15, 0, 75)
-    abaBar.BackgroundColor3 = COR_SECUNDARIA
+    abaBar.BackgroundColor3 = COR_CARD -- ✅ CORRIGIDO AQUI
     abaBar.BackgroundTransparency = 0.3
     abaBar.BorderSizePixel = 0
     abaBar.ZIndex = 2
@@ -541,9 +526,9 @@ task.spawn(function()
     local abaOutros     = criarAba("Outros", 4)
 
     -- ───── BOTÕES DE SCRIPT ─────
-    local function adicionarBotao(painelAba, icone, texto, corBorda, callback)
+    local function adicionarBotao(painelAba, iconeId, texto, corBorda, callback)
         local btn = Instance.new("TextButton", painelAba)
-        btn.Size = UDim2.new(1, -10, 0, 44)
+        btn.Size = UDim2.new(1, -10, 0, 48)
         btn.BackgroundColor3 = COR_CARD
         btn.BackgroundTransparency = 0.2
         btn.AutoButtonColor = false
@@ -551,25 +536,24 @@ task.spawn(function()
         btn.ZIndex = 3
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 
+        local uiScale = Instance.new("UIScale", btn)
+        uiScale.Scale = 1
+
         local stroke = Instance.new("UIStroke", btn)
         stroke.Color = corBorda or COR_NEON
         stroke.Thickness = 1
         stroke.Transparency = 0.7
 
-        -- Ícone
-        local iconeLbl = Instance.new("TextLabel", btn)
+        local iconeLbl = Instance.new("ImageLabel", btn)
         iconeLbl.Size = UDim2.new(0, 30, 0, 30)
         iconeLbl.Position = UDim2.new(0, 8, 0.5, -15)
         iconeLbl.BackgroundColor3 = COR_FUNDO
         iconeLbl.BackgroundTransparency = 0.4
-        iconeLbl.Text = icone
-        iconeLbl.TextColor3 = COR_TEXTO
-        iconeLbl.TextSize = 16
-        iconeLbl.Font = Enum.Font.GothamBold
+        iconeLbl.Image = iconeId
+        iconeLbl.ImageColor3 = COR_TEXTO
         iconeLbl.ZIndex = 4
         Instance.new("UICorner", iconeLbl).CornerRadius = UDim.new(1, 0)
 
-        -- Texto
         local txt = Instance.new("TextLabel", btn)
         txt.Size = UDim2.new(1, -70, 1, 0)
         txt.Position = UDim2.new(0, 48, 0, 0)
@@ -581,7 +565,6 @@ task.spawn(function()
         txt.TextXAlignment = Enum.TextXAlignment.Left
         txt.ZIndex = 4
 
-        -- Seta
         local seta = Instance.new("TextLabel", btn)
         seta.Size = UDim2.new(0, 20, 1, 0)
         seta.Position = UDim2.new(1, -30, 0, 0)
@@ -592,19 +575,19 @@ task.spawn(function()
         seta.Font = Enum.Font.GothamBold
         seta.ZIndex = 4
 
-        -- Hover
         btn.MouseEnter:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = COR_BTN_ATIVO, BackgroundTransparency = 0.1}):Play()
             TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
             TweenService:Create(seta, TweenInfo.new(0.2), {TextColor3 = COR_NEON, Position = UDim2.new(1, -25, 0, 0)}):Play()
+            TweenService:Create(uiScale, TweenInfo.new(0.2), {Scale = 1.03}):Play() 
         end)
         btn.MouseLeave:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = COR_CARD, BackgroundTransparency = 0.2}):Play()
             TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.7}):Play()
             TweenService:Create(seta, TweenInfo.new(0.2), {TextColor3 = COR_TEXTO_CINZA, Position = UDim2.new(1, -30, 0, 0)}):Play()
+            TweenService:Create(uiScale, TweenInfo.new(0.2), {Scale = 1}):Play() 
         end)
 
-        -- Clique
         btn.MouseButton1Click:Connect(function()
             tocarToque()
             local out = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -618,11 +601,11 @@ task.spawn(function()
         end)
     end
 
-    adicionarBotao(abaBrookhaven, "🏠", "Carregar RD4X Hub (Brookhaven)", COR_NEON, function()
+    adicionarBotao(abaBrookhaven, ICONE_HOME, "Carregar RD4X Hub (Brookhaven)", COR_NEON, function()
         pcall(function() loadstring(game:HttpGet(URL_BROOKHAVEN))() end)
     end)
 
-    adicionarBotao(abaPopulares, "💣", "Pass or Explode Hub", COR_NEON, function()
+    adicionarBotao(abaPopulares, ICONE_BOMB, "Pass or Explode Hub", COR_NEON, function()
         pcall(function() loadstring(game:HttpGet(URL_PASS_EXPLODE))() end)
     end)
 
