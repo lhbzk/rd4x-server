@@ -10,7 +10,7 @@ const crypto = require('crypto');
 // ============================================================
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.SERVER_PORT || process.env.PORT || 3000;
 app.use(express.json({ limit: '1mb' }));
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -277,7 +277,9 @@ app.post('/api/dashboard/unblacklist', dashboardAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.listen(port, () => console.log(`[WEB] RD4X API rodando na porta ${port}`));
+app.listen(port, '0.0.0.0', () => {
+  console.log(`[WEB] RD4X API rodando na porta ${port}`);
+});
 
 // ============================================================
 // DISCORD
