@@ -1,13 +1,12 @@
 {
-  "name": "rd4x-bot-oficial",
-  "version": "1.0.0",
+  "name": "rd4x-bot-v10",
+  "version": "10.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "express": "^4.19.2",
-    "@google/genai": "latest"
+    "discord.js": "^14.25.1",
+    "express": "^5.1.0"
   }
 }
