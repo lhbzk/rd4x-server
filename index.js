@@ -331,8 +331,7 @@ app.listen(port, '0.0.0.0', () => {
 // ============================================================
 // DISCORD
 // ============================================================
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
 client.once('ready', () => {
   console.log(`[SUCESSO] Bot online como ${client.user.tag}!`);
   let i = 0;
