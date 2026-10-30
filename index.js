@@ -205,13 +205,10 @@ app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
     }
 
     const admins = guild.members.cache
-      .filter(member =>
-        member.user &&
-        (
-          member.id === ID_DONO ||
-          member.roles.cache.has(ID_CARGO_ADMIN)
-        )
-      )
+  .filter(member =>
+    member.user &&
+    member.roles.cache.has(ID_CARGO_ADMIN)
+  )
       .map(member => ({
         id: member.id,
         discordId: member.id,
