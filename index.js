@@ -204,18 +204,21 @@ app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
       });
     }
 
-    const admins = guild.members.cache
-  .filter(member =>
-    member.user &&
-    member.roles.cache.has(ID_CARGO_ADMIN)
-  )
+    const membros = await guild.members.fetch();
+
+    const admins = membros
+      .filter(member =>
+        member.user &&
+        member.roles.cache.has(ID_CARGO_ADMIN)
+      )
       .map(member => ({
         id: member.id,
         discordId: member.id,
         name: member.user.username,
         tag: member.user.tag,
         avatar: member.user.displayAvatarURL({ size: 128 }),
-        isOwner: member.id === ID_DONO,
+        role: 'Administrador',
+        isOwner: false,
         status: member.presence?.status || 'offline'
       }));
 
