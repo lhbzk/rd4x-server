@@ -1398,6 +1398,620 @@ app.post(
 );
 
 // ============================================================
+// DASHBOARD — ADMINISTRADORES
+// ============================================================
+
+app.get(
+  '/api/dashboard/admins',
+  dashboardAuth,
+  async (req, res) => {
+    try {
+      const guild =
+        await getGuild();
+
+      if (!guild) {
+        return res.status(404).json({
+          success: false,
+          error:
+            'Servidor Discord não encontrado'
+        });
+      }
+
+      const membros =
+        await guild.members.fetch();
+
+      const admins =
+        membros
+          .filter(
+            member =>
+              member.user &&
+              member.roles.cache.has(
+                ID_CARGO_ADMIN
+              )
+          )
+          .map(
+            member => ({
+              id:
+                member.id,
+
+              discordId:
+                member.id,
+
+              name:
+                member.user.username,
+
+              tag:
+                member.user.tag,
+
+              avatar:
+                member.user.displayAvatarURL({
+                  size: 128
+                }),
+
+              role:
+                'Administrador',
+
+              isOwner:
+                false,
+
+              status:
+                member.presence?.status ||
+                'offline'
+            })
+          );
+
+      return res.json({
+        success: true,
+        data: admins
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD ADMINS]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          'Erro ao buscar administradores'
+      });
+    }
+  }
+);
+
+// ============================================================
+// DASHBOARD — INCIDENTES
+// ============================================================
+
+app.get(
+  '/api/dashboard/incidents',
+  dashboardAuth,
+  (req, res) => {
+    try {
+      const data =
+        Array.isArray(
+          db.incidentes
+        )
+          ? db.incidentes
+              .slice(-1000)
+              .reverse()
+          : [];
+
+      return res.json({
+        success: true,
+        data
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD INCIDENTS]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          'Erro ao buscar incidentes'
+      });
+    }
+  }
+);
+
+// ============================================================
+// DASHBOARD — TRANSCRIPTS
+// ============================================================
+
+app.get(
+  '/api/dashboard/transcripts',
+  dashboardAuth,
+  (req, res) => {
+    try {
+      if (
+        !fs.existsSync(
+          TRANSCRIPT_DIR
+        )
+      ) {
+        return res.json({
+          success: true,
+          data: []
+        });
+      }
+
+      const arquivos =
+        fs.readdirSync(
+          TRANSCRIPT_DIR
+        )
+        .filter(
+          file =>
+            file
+              .toLowerCase()
+              .endsWith('.txt')
+        );
+
+      const transcripts = [];
+
+      for (
+        const fileName of arquivos
+      ) {
+        try {
+          const filePath =
+            path.join(
+              TRANSCRIPT_DIR,
+              fileName
+            );
+
+          const stat =
+            fs.statSync(
+              filePath
+            );
+
+          const texto =
+            fs.readFileSync(
+              filePath,
+              'utf8'
+            );
+
+          const linhas =
+            texto
+              .split(/\r?\n/)
+              .filter(
+                linha =>
+                  linha.trim()
+              );
+
+          const messages =
+            linhas.map(
+              (linha, index) => {
+                const match =
+                  linha.match(
+                    /^\[([^\]]+)\]\s+([^:]+):\s?(.*)$/
+                  );
+
+                if (match) {
+                  return {
+                    id:
+                      `${fileName}-${index}`,
+
+                    role:
+                      'message',
+
+                    author:
+                      match[2],
+
+                    time:
+                      match[1],
+
+                    text:
+                      match[3]
+                  };
+                }
+
+                return {
+                  id:
+                    `${fileName}-${index}`,
+
+                  role:
+                    'message',
+
+                  author:
+                    '—',
+
+                  time:
+                    '',
+
+                  text:
+                    linha
+                };
+              }
+            );
+
+          const channelMatch =
+            fileName.match(
+              /^transcript-(\d+)-/
+            );
+
+          const channelId =
+            channelMatch
+              ? channelMatch[1]
+              : '';
+
+          transcripts.push({
+            id:
+              fileName
+                .replace(
+                  /\.txt$/i,
+                  ''
+                ),
+
+            ticketId:
+              channelId,
+
+            userId:
+              '',
+
+            admin:
+              '—',
+
+            createdAt:
+              stat.birthtime &&
+              !Number.isNaN(
+                stat.birthtime.getTime()
+              )
+                ? stat.birthtime.toISOString()
+                : stat.mtime.toISOString(),
+
+            messages,
+
+            fileName
+          });
+
+        } catch (error) {
+          console.error(
+            `[DASHBOARD TRANSCRIPTS] Erro ao ler ${fileName}:`,
+            error
+          );
+        }
+      }
+
+      transcripts.sort(
+        (a, b) =>
+          new Date(
+            b.createdAt
+          ).getTime() -
+          new Date(
+            a.createdAt
+          ).getTime()
+      );
+
+      return res.json({
+        success: true,
+        data: transcripts
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD TRANSCRIPTS]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          'Erro ao buscar transcripts'
+      });
+    }
+  }
+);
+
+// ============================================================
+// DASHBOARD — ADMINISTRADORES
+// ============================================================
+
+app.get(
+  '/api/dashboard/admins',
+  dashboardAuth,
+  async (req, res) => {
+    try {
+      const guild =
+        await getGuild();
+
+      if (!guild) {
+        return res.status(404).json({
+          success: false,
+          error:
+            'Servidor Discord não encontrado'
+        });
+      }
+
+      const membros =
+        await guild.members.fetch();
+
+      const admins =
+        membros
+          .filter(
+            member =>
+              member.user &&
+              member.roles.cache.has(
+                ID_CARGO_ADMIN
+              )
+          )
+          .map(
+            member => ({
+              id:
+                member.id,
+
+              discordId:
+                member.id,
+
+              name:
+                member.user.username,
+
+              tag:
+                member.user.tag,
+
+              avatar:
+                member.user.displayAvatarURL({
+                  size: 128
+                }),
+
+              role:
+                'Administrador',
+
+              isOwner:
+                false,
+
+              status:
+                member.presence?.status ||
+                'offline'
+            })
+          );
+
+      return res.json({
+        success: true,
+        data: admins
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD ADMINS]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          'Erro ao buscar administradores'
+      });
+    }
+  }
+);
+
+// ============================================================
+// DASHBOARD — INCIDENTES
+// ============================================================
+
+app.get(
+  '/api/dashboard/incidents',
+  dashboardAuth,
+  (req, res) => {
+    try {
+      const data =
+        Array.isArray(
+          db.incidentes
+        )
+          ? db.incidentes
+              .slice(-1000)
+              .reverse()
+          : [];
+
+      return res.json({
+        success: true,
+        data
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD INCIDENTS]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          'Erro ao buscar incidentes'
+      });
+    }
+  }
+);
+
+// ============================================================
+// DASHBOARD — TRANSCRIPTS
+// ============================================================
+
+app.get(
+  '/api/dashboard/transcripts',
+  dashboardAuth,
+  (req, res) => {
+    try {
+      if (
+        !fs.existsSync(
+          TRANSCRIPT_DIR
+        )
+      ) {
+        return res.json({
+          success: true,
+          data: []
+        });
+      }
+
+      const arquivos =
+        fs.readdirSync(
+          TRANSCRIPT_DIR
+        )
+        .filter(
+          file =>
+            file
+              .toLowerCase()
+              .endsWith('.txt')
+        );
+
+      const transcripts = [];
+
+      for (
+        const fileName of arquivos
+      ) {
+        try {
+          const filePath =
+            path.join(
+              TRANSCRIPT_DIR,
+              fileName
+            );
+
+          const stat =
+            fs.statSync(
+              filePath
+            );
+
+          const texto =
+            fs.readFileSync(
+              filePath,
+              'utf8'
+            );
+
+          const linhas =
+            texto
+              .split(/\r?\n/)
+              .filter(
+                linha =>
+                  linha.trim()
+              );
+
+          const messages =
+            linhas.map(
+              (linha, index) => {
+                const match =
+                  linha.match(
+                    /^\[([^\]]+)\]\s+([^:]+):\s?(.*)$/
+                  );
+
+                if (match) {
+                  return {
+                    id:
+                      `${fileName}-${index}`,
+
+                    role:
+                      'message',
+
+                    author:
+                      match[2],
+
+                    time:
+                      match[1],
+
+                    text:
+                      match[3]
+                  };
+                }
+
+                return {
+                  id:
+                    `${fileName}-${index}`,
+
+                  role:
+                    'message',
+
+                  author:
+                    '—',
+
+                  time:
+                    '',
+
+                  text:
+                    linha
+                };
+              }
+            );
+
+          const channelMatch =
+            fileName.match(
+              /^transcript-(\d+)-/
+            );
+
+          const channelId =
+            channelMatch
+              ? channelMatch[1]
+              : '';
+
+          transcripts.push({
+            id:
+              fileName
+                .replace(
+                  /\.txt$/i,
+                  ''
+                ),
+
+            ticketId:
+              channelId,
+
+            userId:
+              '',
+
+            admin:
+              '—',
+
+            createdAt:
+              stat.birthtime &&
+              !Number.isNaN(
+                stat.birthtime.getTime()
+              )
+                ? stat.birthtime.toISOString()
+                : stat.mtime.toISOString(),
+
+            messages,
+
+            fileName
+          });
+
+        } catch (error) {
+          console.error(
+            `[DASHBOARD TRANSCRIPTS] Erro ao ler ${fileName}:`,
+            error
+          );
+        }
+      }
+
+      transcripts.sort(
+        (a, b) =>
+          new Date(
+            b.createdAt
+          ).getTime() -
+          new Date(
+            a.createdAt
+          ).getTime()
+      );
+
+      return res.json({
+        success: true,
+        data: transcripts
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD TRANSCRIPTS]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          'Erro ao buscar transcripts'
+      });
+    }
+  }
+);
+
+// ============================================================
 // SERVIDOR WEB
 // ============================================================
 
@@ -1410,7 +2024,6 @@ app.listen(
     );
   }
 );
-
 // ============================================================
 // DISCORD CLIENT
 // ============================================================
