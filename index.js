@@ -204,12 +204,13 @@ app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
       });
     }
 
-    const membros = await guild.members.fetch();
-
-    const admins = membros
+    const admins = guild.members.cache
       .filter(member =>
         member.user &&
-        (member.id === ID_DONO || member.roles.cache.has(ID_CARGO_ADMIN))
+        (
+          member.id === ID_DONO ||
+          member.roles.cache.has(ID_CARGO_ADMIN)
+        )
       )
       .map(member => ({
         id: member.id,
@@ -221,7 +222,7 @@ app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
         status: member.presence?.status || 'offline'
       }));
 
-    res.json({
+    return res.json({
       success: true,
       data: admins
     });
@@ -229,7 +230,7 @@ app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
   } catch (error) {
     console.error('[DASHBOARD ADMINS]', error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erro ao buscar administradores'
     });
