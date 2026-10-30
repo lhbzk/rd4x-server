@@ -1,657 +1,649 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const express = require('express');
-const { GoogleGenAI } = require('@google/genai');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
-// Inicializa o SDK do Gemini apenas se a chave existir
-const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+// ============================================================
+// RD4X HUB — BOT + TICKETS + WHITELIST/HWID + DASHBOARD API
+// V10 — persistência local sem banco nativo, ideal para hospedagem móvel
+// ============================================================
 
-// --- SERVIDOR WEB & API PARA O ROBLOX ---
 const app = express();
-const port = process.env.SERVER_PORT || process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
+app.use(express.json({ limit: '1mb' }));
 
-app.use(express.json());
+const DATA_DIR = path.join(__dirname, 'data');
+const TRANSCRIPT_DIR = path.join(DATA_DIR, 'transcripts');
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(TRANSCRIPT_DIR, { recursive: true });
+const DB_FILE = path.join(DATA_DIR, 'rd4x-data.json');
 
-app.get('/', (req, res) => {
-    res.send('RD4X Bot está online e ativo!');
-});
+const ID_DONO = process.env.ID_DONO || '1549272865260441631';
+const ID_CARGO_ADMIN = process.env.ID_CARGO_ADMIN || '1549273436705259570';
+const ID_CARGO_CLIENTE = process.env.ID_CARGO_CLIENTE || '1549273666951577691';
+const CHAVE_PIX = process.env.CHAVE_PIX || '85777075550';
+const ID_CANAL_LOGS = process.env.ID_CANAL_LOGS || '1549274555175018587';
+const ID_CANAL_AVALIACOES = process.env.ID_CANAL_AVALIACOES || '1549458044331757660';
+const GUILD_ID = process.env.GUILD_ID || '';
+const DASHBOARD_API_KEY = process.env.DASHBOARD_API_KEY || '';
 
-app.get('/api/v2/whitelist', (req, res) => {
-    const nickRoblox = req.query.nick || req.query.userid;
-    const hwidCliente = req.query.hwid || req.headers['x-hwid'] || "HWID_NAO_ENVIADO";
+const DEFAULT_DB = {
+  version: 2,
+  totalExecucoesGlobais: 0,
+  historicoVendas: [],
+  usuariosLiberados: {},
+  blacklist: [],
+  tickets: {},
+  cooldownTickets: {},
+  auditoria: [],
+  incidentes: [],
+  adminDevices: {},
+  releaseWindow: []
+};
 
-    if (!nickRoblox) {
-        return res.json({ success: false, whitelisted: false, message: "Nick ausente" });
+function loadDB() {
+  try {
+    if (!fs.existsSync(DB_FILE)) return structuredClone(DEFAULT_DB);
+    const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    return { ...structuredClone(DEFAULT_DB), ...parsed };
+  } catch (err) {
+    console.error('[DB] Falha ao ler banco local:', err);
+    return structuredClone(DEFAULT_DB);
+  }
+}
+
+let db = loadDB();
+let saveTimer = null;
+function saveDB(immediate = false) {
+  if (saveTimer) clearTimeout(saveTimer);
+  const write = () => {
+    const tmp = `${DB_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2), 'utf8');
+    fs.renameSync(tmp, DB_FILE);
+  };
+  if (immediate) write();
+  else saveTimer = setTimeout(() => { try { write(); } catch (e) { console.error('[DB] Erro ao salvar:', e); } }, 250);
+}
+
+// Compatibilidade com o código anterior: os nomes continuam existindo.
+const usuariosLiberados = new Map(Object.entries(db.usuariosLiberados));
+const historicoVendas = db.historicoVendas;
+const blacklist = new Set(db.blacklist);
+const ticketsAtivos = new Map(Object.entries(db.tickets));
+const cooldownTickets = new Map(Object.entries(db.cooldownTickets));
+let totalExecucoesGlobais = db.totalExecucoesGlobais || 0;
+
+function syncDB() {
+  db.usuariosLiberados = Object.fromEntries(usuariosLiberados);
+  db.tickets = Object.fromEntries(ticketsAtivos);
+  db.cooldownTickets = Object.fromEntries(cooldownTickets);
+  db.blacklist = [...blacklist];
+  db.totalExecucoesGlobais = totalExecucoesGlobais;
+  saveDB();
+}
+
+function audit(actor, action, target = '', details = {}) {
+  db.auditoria.push({ id: crypto.randomUUID(), at: new Date().toISOString(), actor, action, target, details });
+  if (db.auditoria.length > 5000) db.auditoria.splice(0, db.auditoria.length - 5000);
+  saveDB();
+}
+
+function incident(type, severity, details = {}) {
+  db.incidentes.push({ id: crypto.randomUUID(), at: new Date().toISOString(), type, severity, status: 'open', details });
+  if (db.incidentes.length > 1000) db.incidentes.splice(0, db.incidentes.length - 1000);
+  saveDB();
+}
+
+function isAdmin(member, userId) {
+  return userId === ID_DONO || Boolean(member?.roles?.cache?.has(ID_CARGO_ADMIN));
+}
+function isOwner(userId) { return userId === ID_DONO; }
+
+async function getGuild() {
+  if (GUILD_ID) return client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID).catch(() => null);
+  return client.guilds.cache.first() || null;
+}
+
+async function notificarSuspeitaHWID(nick, hwidTentativa, hwidRegistrado) {
+  if (!ID_CANAL_LOGS || !client.isReady()) return;
+  try {
+    const canal = client.channels.cache.get(ID_CANAL_LOGS);
+    if (!canal) return;
+    const embedHWID = new EmbedBuilder()
+      .setTitle('🚨 Alerta de Segurança — HWID Incompatível')
+      .setDescription(`Tentativa de uso em outro aparelho detectada!\n\n**Nick:** \`${nick}\`\n**HWID Registrado:** \`${hwidRegistrado}\`\n**HWID Tentativa:** \`${hwidTentativa}\``)
+      .setColor(0xff0000).setTimestamp();
+    await canal.send({ embeds: [embedHWID] });
+    incident('hwid_mismatch', 'high', { nick });
+  } catch (e) { console.error('[HWID]', e); }
+}
+
+// ============================================================
+// API ROBLOX
+// ============================================================
+app.get('/', (req, res) => res.send('RD4X Bot está online e ativo!'));
+
+app.get('/api/v2/whitelist', async (req, res) => {
+  const nickRoblox = req.query.nick || req.query.userid;
+  const hwidCliente = req.query.hwid || req.headers['x-hwid'] || 'HWID_NAO_ENVIADO';
+  if (!nickRoblox) return res.json({ success: false, whitelisted: false, message: 'Nick ausente' });
+
+  if (nickRoblox === ID_DONO) return res.json({ success: true, whitelisted: true, role: 'Dono' });
+
+  if (usuariosLiberados.has(nickRoblox)) {
+    const dados = usuariosLiberados.get(nickRoblox);
+    const expiraEm = typeof dados === 'object' ? dados.expiraEm : dados;
+
+    if (expiraEm !== 'perm' && Date.now() > expiraEm) {
+      usuariosLiberados.delete(nickRoblox);
+      syncDB();
+      return res.json({ success: false, whitelisted: false, message: 'Expirado' });
     }
 
-    if (nickRoblox === ID_DONO) {
-        return res.json({ success: true, whitelisted: true, role: "Dono" });
+    if (dados.hwid && dados.hwid !== 'LIVRE') {
+      if (dados.hwid !== hwidCliente) {
+        await notificarSuspeitaHWID(nickRoblox, hwidCliente, dados.hwid);
+        return res.json({ success: false, whitelisted: false, message: 'HWID incompativel. Uso em outro aparelho detectado!' });
+      }
+    } else {
+      dados.hwid = hwidCliente;
+      usuariosLiberados.set(nickRoblox, dados);
+      audit('ROBLOX_API', 'hwid_bound', nickRoblox);
+      syncDB();
     }
-
-    if (usuariosLiberados.has(nickRoblox)) {
-        const dados = usuariosLiberados.get(nickRoblox);
-        const expiraEm = typeof dados === 'object' ? dados.expiraEm : dados;
-        
-        if (expiraEm !== "perm" && Date.now() > expiraEm) {
-            usuariosLiberados.delete(nickRoblox);
-            return res.json({ success: false, whitelisted: false, message: "Expirado" });
-        }
-
-        if (dados.hwid && dados.hwid !== "LIVRE") {
-            if (dados.hwid !== hwidCliente) {
-                notificarSuspeitaHWID(nickRoblox, hwidCliente, dados.hwid);
-                return res.json({ success: false, whitelisted: false, message: "HWID incompativel. Uso em outro aparelho detectado!" });
-            }
-        } else {
-            dados.hwid = hwidCliente;
-            usuariosLiberados.set(nickRoblox, dados);
-        }
-
-        return res.json({ success: true, whitelisted: true });
-    }
-
-    return res.json({ success: false, whitelisted: false });
+    return res.json({ success: true, whitelisted: true });
+  }
+  return res.json({ success: false, whitelisted: false });
 });
 
 app.post('/api/v2/execucoes', async (req, res) => {
-    const { nick, jogo } = req.body;
-    totalExecucoesGlobais++;
-
-    if (ID_CANAL_LOGS && client.isReady()) {
-        try {
-            const canal = client.channels.cache.get(ID_CANAL_LOGS);
-            if (canal) {
-                const embedExec = new EmbedBuilder()
-                    .setTitle("🎮 RD4X Hub — Executado no Roblox")
-                    .setDescription(`**Jogador:** \`${nick || 'Desconhecido'}\`\n**Jogo:** \`${jogo || 'Blox Fruits / Geral'}\`\n**Status:** ✅ Acesso Validado`)
-                    .setColor(0x00ff88)
-                    .setTimestamp();
-                await canal.send({ embeds: [embedExec] });
-            }
-        } catch (e) {
-            console.error("Erro ao mandar log de execução:", e);
-        }
+  const { nick, jogo } = req.body || {};
+  totalExecucoesGlobais++;
+  syncDB();
+  if (ID_CANAL_LOGS && client.isReady()) {
+    const canal = client.channels.cache.get(ID_CANAL_LOGS);
+    if (canal) {
+      const embedExec = new EmbedBuilder()
+        .setTitle('🎮 RD4X Hub — Executado no Roblox')
+        .setDescription(`**Jogador:** \`${nick || 'Desconhecido'}\`\n**Jogo:** \`${jogo || 'Blox Fruits / Geral'}\`\n**Status:** ✅ Acesso Validado`)
+        .setColor(0x00ff88).setTimestamp();
+      await canal.send({ embeds: [embedExec] }).catch(() => {});
     }
-
-    return res.json({ success: true, logged: true });
+  }
+  res.json({ success: true, logged: true });
 });
 
-app.listen(port, '0.0.0.0', () => {
-    console.log(`[WEB] Servidor web e API rodando na porta ${port}`);
-});
-
-// --- CONFIGURAÇÕES E IDS ---
-const ID_DONO = "1549272865260441631";
-const ID_CARGO_ADMIN = "1549273436705259570";
-const ID_CARGO_CLIENTE = "1549273666951577691"; 
-const CHAVE_PIX = "85777075550";
-const ID_CANAL_LOGS = "1549274555175018587"; 
-const ID_CANAL_AVALIACOES = "1549458044331757660"; 
-
-// Estatísticas e Bancos em Memória
-let totalExecucoesGlobais = 0;
-let historicoVendas = []; 
-const usuariosLiberados = new Map(); 
-const blacklist = new Set(); 
-const ticketsAtivos = new Map(); 
-const cooldownTickets = new Map(); 
-
-// --- BOT DO DISCORD ---
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-        // GatewayIntentBits.GuildMembers foi removido para evitar crash de Intent Privilegiada
-    ]
-});
-
-async function notificarSuspeitaHWID(nick, hwidTentativa, hwidRegistrado) {
-    if (!ID_CANAL_LOGS) return;
-    try {
-        const canal = client.channels.cache.get(ID_CANAL_LOGS);
-        if (canal) {
-            const embedHWID = new EmbedBuilder()
-                .setTitle("🚨 Alerta de Segurança — HWID Incompatível")
-                .setDescription(`Tentativa de uso em outro aparelho detectada!\n\n**Nick:** \`${nick}\`\n**HWID Registrado:** \`${hwidRegistrado}\`\n**HWID Tentativa:** \`${hwidTentativa}\``)
-                .setColor(0xff0000)
-                .setTimestamp();
-            await canal.send({ embeds: [embedHWID] });
-        }
-    } catch (e) {}
+function dashboardAuth(req, res, next) {
+  if (!DASHBOARD_API_KEY) return res.status(503).json({ error: 'DASHBOARD_API_KEY não configurada' });
+  if (req.headers.authorization !== `Bearer ${DASHBOARD_API_KEY}`) return res.status(401).json({ error: 'Não autorizado' });
+  next();
 }
 
-client.once('ready', () => {
-    console.log(`[SUCESSO] Bot online e conectado como ${client.user.tag}!`);
-
-    let indiceStatus = 0;
-    setInterval(() => {
-        const totalClientes = usuariosLiberados.size;
-        const listaStatus = [
-            { name: 'RD4X Hub | v2.0 🚀', type: 0 },
-            { name: `${totalClientes} Clientes VIP 💎`, type: 3 },
-            { name: `${totalExecucoesGlobais} Injeções no Roblox 🎮`, type: 0 },
-            { name: '!ajuda | Suporte 🎫', type: 2 }
-        ];
-        
-        client.user.setActivity(listaStatus[indiceStatus].name, { type: listaStatus[indiceStatus].type });
-        indiceStatus = (indiceStatus + 1) % listaStatus.length;
-    }, 15000);
-
-    setInterval(async () => {
-        const agora = Date.now();
-        const doisDiasEmMs = 2 * 24 * 60 * 60 * 1000;
-
-        for (const [nick, dados] of usuariosLiberados.entries()) {
-            if (dados.expiraEm && dados.expiraEm !== "perm") {
-                const tempoRestante = dados.expiraEm - agora;
-
-                if (tempoRestante > 0 && tempoRestante <= doisDiasEmMs && !dados.avisadoExpiracao) {
-                    dados.avisadoExpiracao = true;
-                    if (dados.discordId) {
-                        try {
-                            const user = await client.users.fetch(dados.discordId);
-                            if (user) {
-                                await user.send(`⚠️ **Aviso de Expiração — RD4X Hub**\n\nOlá! Seu painel no Roblox para a conta **${nick}** vai expirar em menos de 48 horas.\nAbra um ticket no servidor para renovar seu acesso!`);
-                            }
-                        } catch (e) {}
-                    }
-                }
-
-                if (tempoRestante <= 0) {
-                    if (dados.discordId && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
-                        for (const guild of client.guilds.cache.values()) {
-                            try {
-                                const member = await guild.members.fetch(dados.discordId);
-                                if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
-                            } catch (e) {}
-                        }
-                    }
-                    usuariosLiberados.delete(nick);
-                }
-            }
-        }
-    }, 60000);
-
-    setInterval(async () => {
-        const agora = Date.now();
-        const vinteEQuatroHoras = 24 * 60 * 60 * 1000;
-
-        for (const [idCanal, dados] of ticketsAtivos.entries()) {
-            if (dados.ultimoContato && (agora - dados.ultimoContato >= vinteEQuatroHoras) && !dados.avisoInatividade) {
-                dados.avisoInatividade = true;
-                const canal = client.channels.cache.get(idCanal);
-                if (canal) {
-                    await canal.send("⏱️ **Aviso de Inatividade:** Este ticket está sem respostas há 24 horas e poderá ser encerrado em breve.");
-                }
-            }
-        }
-    }, 300000);
+// API para o dashboard. Em produção, o OAuth Discord deve proteger a sessão antes de chegar aqui.
+app.get('/api/dashboard/overview', dashboardAuth, (req, res) => {
+  const ativos = [...usuariosLiberados.entries()].filter(([_, d]) => d.expiraEm === 'perm' || d.expiraEm > Date.now()).length;
+  const abertos = [...ticketsAtivos.values()].filter(t => t.status !== 'closed').length;
+  const faturamento = historicoVendas.reduce((a, v) => a + Number(v.valor || 0), 0);
+  res.json({ success: true, data: { ativos, ticketsAbertos: abertos, execucoes: totalExecucoesGlobais, vendas: historicoVendas.length, faturamento, incidentesAbertos: db.incidentes.filter(i => i.status === 'open').length } });
 });
 
-async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEvento, cor) {
-    if (!ID_CANAL_LOGS || ID_CANAL_LOGS.includes("SEU_ID")) return;
-    try {
-        const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
-        if (!canalLogs) return;
+app.get('/api/dashboard/users', dashboardAuth, (req, res) => {
+  const data = [...usuariosLiberados.entries()].map(([nick, d]) => ({ nick, ...d }));
+  res.json({ success: true, data });
+});
 
-        let dadosTicket = ticketsAtivos.get(idTicket) || { logs: [], messageId: null, ultimoContato: Date.now() };
-        const dataFormatada = `<t:${Math.floor(Date.now() / 1000)}:R>`;
-        
-        dadosTicket.logs.push(`• [${dataFormatada}]${novoEvento}`);
+app.get('/api/dashboard/tickets', dashboardAuth, (req, res) => {
+  res.json({ success: true, data: [...ticketsAtivos.entries()].map(([channelId, t]) => ({ channelId, ...t })) });
+});
 
-        const embed = new EmbedBuilder()
-            .setTitle(`🎫 Painel de Atendimento — ${tituloGeral}`)
-            .setColor(cor || 0x0015ff)
-            .setDescription(`**Usuário:** ${usuario}\n\n**Histórico de Atividades:**\n${dadosTicket.logs.join('\n')}`)
-            .setFooter({ text: "RD4X Hub • Sistema Unificado de Logs" })
-            .setTimestamp();
+app.get('/api/dashboard/audit', dashboardAuth, (req, res) => {
+  res.json({ success: true, data: db.auditoria.slice(-500).reverse() });
+});
 
-        if (dadosTicket.messageId) {
-            try {
-                const msgExistente = await canalLogs.messages.fetch(dadosTicket.messageId);
-                if (msgExistente) {
-                    await msgExistente.edit({ embeds: [embed] });
-                    ticketsAtivos.set(idTicket, dadosTicket);
-                    return;
-                }
-            } catch (e) {}
+app.post('/api/dashboard/release', dashboardAuth, async (req, res) => {
+  const { actorId, actorTag, tempo, nick, discordId, valor = 0 } = req.body || {};
+  if (!actorId || (!isOwner(actorId) && actorId !== 'verified-admin')) return res.status(403).json({ error: 'Administrador não verificado' });
+  const parsed = String(tempo || '').toLowerCase();
+  let expiraEm;
+  if (parsed === 'perm' || parsed === 'permanente') expiraEm = 'perm';
+  else {
+    const match = parsed.match(/^(\d+)(d|m|h)$/);
+    if (!match) return res.status(400).json({ error: 'Tempo inválido. Use 3d, 12d, 1m, 2m ou perm.' });
+    const qtd = Number(match[1]);
+    const dias = match[2] === 'm' ? qtd * 30 : match[2] === 'h' ? qtd / 24 : qtd;
+    expiraEm = Date.now() + dias * 86400000;
+  }
+  usuariosLiberados.set(nick, { expiraEm, discordId: discordId || null, avisadoExpiracao: false, hwid: 'LIVRE', valorPago: Number(valor) || 0, dataVenda: new Date().toISOString() });
+  if (Number(valor) > 0) historicoVendas.push({ nick, valor: Number(valor), data: new Date().toISOString() });
+  db.releaseWindow.push(Date.now());
+  db.releaseWindow = db.releaseWindow.filter(t => Date.now() - t < 15 * 60 * 1000);
+  audit(actorTag || actorId, 'release', nick, { tempo: parsed, valor });
+  if (db.releaseWindow.length > 50) incident('mass_release_threshold', 'critical', { count: db.releaseWindow.length });
+  syncDB();
+
+  if (discordId && ID_CARGO_CLIENTE) {
+    const guild = await getGuild();
+    const member = guild ? await guild.members.fetch(discordId).catch(() => null) : null;
+    if (member) await member.roles.add(ID_CARGO_CLIENTE).catch(() => {});
+  }
+  res.json({ success: true, nick, expiraEm });
+});
+
+app.post('/api/dashboard/reset-hwid', dashboardAuth, (req, res) => {
+  const { actorId, actorTag, nick } = req.body || {};
+  if (!actorId) return res.status(400).json({ error: 'actorId ausente' });
+  if (usuariosLiberados.has(nick)) {
+    const dados = usuariosLiberados.get(nick);
+    dados.hwid = 'LIVRE';
+    dados.hwidResetAt = new Date().toISOString();
+    usuariosLiberados.set(nick, dados);
+    audit(actorTag || actorId, 'reset_hwid', nick);
+    syncDB();
+    return res.json({ success: true });
+  }
+  res.status(404).json({ error: 'Cliente não encontrado' });
+});
+
+app.post('/api/dashboard/revoke', dashboardAuth, async (req, res) => {
+  const { actorId, actorTag, nick } = req.body || {};
+  const dados = usuariosLiberados.get(nick);
+  if (!dados) return res.status(404).json({ error: 'Cliente não encontrado' });
+  const guild = await getGuild();
+  if (guild && dados.discordId && ID_CARGO_CLIENTE) {
+    const member = await guild.members.fetch(dados.discordId).catch(() => null);
+    if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
+  }
+  usuariosLiberados.delete(nick);
+  audit(actorTag || actorId, 'revoke_panel', nick);
+  syncDB();
+  res.json({ success: true });
+});
+
+app.post('/api/dashboard/blacklist', dashboardAuth, (req, res) => {
+  const { actorId, actorTag, value } = req.body || {};
+  if (!value) return res.status(400).json({ error: 'value ausente' });
+  blacklist.add(String(value));
+  audit(actorTag || actorId, 'blacklist', String(value));
+  syncDB();
+  res.json({ success: true });
+});
+
+app.post('/api/dashboard/unblacklist', dashboardAuth, (req, res) => {
+  const { actorId, actorTag, value } = req.body || {};
+  blacklist.delete(String(value));
+  audit(actorTag || actorId, 'unblacklist', String(value));
+  syncDB();
+  res.json({ success: true });
+});
+
+app.listen(port, () => console.log(`[WEB] RD4X API rodando na porta ${port}`));
+
+// ============================================================
+// DISCORD
+// ============================================================
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+
+client.once('ready', () => {
+  console.log(`[SUCESSO] Bot online como ${client.user.tag}!`);
+  let i = 0;
+  setInterval(() => {
+    const lista = [
+      { name: 'RD4X Hub | Tickets 🎫', type: 0 },
+      { name: `${usuariosLiberados.size} Clientes VIP 💎`, type: 3 },
+      { name: `${totalExecucoesGlobais} Execuções 🎮`, type: 0 },
+      { name: '!ajuda | Suporte 🎫', type: 2 }
+    ];
+    client.user.setActivity(lista[i].name, { type: lista[i].type });
+    i = (i + 1) % lista.length;
+  }, 15000);
+
+  setInterval(async () => {
+    const agora = Date.now();
+    for (const [nick, dados] of usuariosLiberados.entries()) {
+      if (dados.expiraEm && dados.expiraEm !== 'perm') {
+        const restante = dados.expiraEm - agora;
+        if (restante > 0 && restante <= 172800000 && !dados.avisadoExpiracao) {
+          dados.avisadoExpiracao = true;
+          if (dados.discordId) {
+            const user = await client.users.fetch(dados.discordId).catch(() => null);
+            if (user) await user.send(`⚠️ **Aviso de Expiração — RD4X Hub**\n\nSeu painel para **${nick}** expira em menos de 48 horas. Abra um ticket para renovar.`).catch(() => {});
+          }
         }
-
-        const novaMsg = await canalLogs.send({ embeds: [embed] });
-        dadosTicket.messageId = novaMsg.id;
-        ticketsAtivos.set(idTicket, dadosTicket);
-
-    } catch (e) {
-        console.error("Erro ao registrar log agrupado:", e);
+        if (restante <= 0) {
+          const guild = await getGuild();
+          if (guild && dados.discordId && ID_CARGO_CLIENTE) {
+            const member = await guild.members.fetch(dados.discordId).catch(() => null);
+            if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
+          }
+          usuariosLiberados.delete(nick);
+          audit('SYSTEM', 'expiration', nick);
+        }
+      }
     }
+    syncDB();
+  }, 60000);
+
+  setInterval(async () => {
+    const agora = Date.now();
+    for (const [idCanal, dados] of ticketsAtivos.entries()) {
+      if (dados.ultimoContato && agora - dados.ultimoContato >= 86400000 && !dados.avisoInatividade) {
+        dados.avisoInatividade = true;
+        const canal = client.channels.cache.get(idCanal);
+        if (canal) await canal.send('⏱️ **Aviso de Inatividade:** este ticket está sem respostas há 24 horas e poderá ser encerrado em breve.').catch(() => {});
+      }
+    }
+    syncDB();
+  }, 300000);
+});
+
+async function registrarLogTicket(guild, idTicket, tituloGeral, usuario, novoEvento, cor = 0xff0033) {
+  const dados = ticketsAtivos.get(idTicket) || { logs: [], messageId: null, ultimoContato: Date.now(), status: 'open' };
+  dados.logs.push(`• [<t:${Math.floor(Date.now() / 1000)}:R>] ${novoEvento}`);
+  dados.ultimoContato = Date.now();
+  ticketsAtivos.set(idTicket, dados);
+  syncDB();
+  if (!ID_CANAL_LOGS) return;
+  const canalLogs = guild.channels.cache.get(ID_CANAL_LOGS);
+  if (!canalLogs) return;
+  const embed = new EmbedBuilder().setTitle(`🎫 Atendimento — ${tituloGeral}`).setColor(cor).setDescription(`**Usuário:** ${usuario}\n\n**Histórico:**\n${dados.logs.slice(-20).join('\n')}`).setFooter({ text: 'RD4X Hub • Logs de Atendimento' }).setTimestamp();
+  try {
+    if (dados.messageId) {
+      const msg = await canalLogs.messages.fetch(dados.messageId);
+      await msg.edit({ embeds: [embed] });
+    } else {
+      const msg = await canalLogs.send({ embeds: [embed] });
+      dados.messageId = msg.id;
+      ticketsAtivos.set(idTicket, dados);
+      syncDB();
+    }
+  } catch {}
+}
+
+function ticketData(channelId, userId) {
+  return ticketsAtivos.get(channelId) || { userId, status: 'open', prioridade: 'normal', tags: [], notas: [], logs: [], ultimoContato: Date.now(), avisoInatividade: false };
 }
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
+  if (message.author.bot) return;
 
-    if (message.channel.name?.startsWith('ticket-')) {
-        let dados = ticketsAtivos.get(message.channel.id) || { logs: [], messageId: null };
-        dados.ultimoContato = Date.now();
-        dados.avisoInatividade = false;
-        ticketsAtivos.set(message.channel.id, dados);
-
-        if (message.attachments.size > 0) {
-            await message.reply("Aguarde um momento, você já vai ser respondido! ⌛");
-            await registrarLogTicket(
-                message.guild, 
-                message.channel.id, 
-                message.channel.name, 
-                `<@${message.author.id}>`, 
-                `📷 Anexo/Comprovante enviado pelo cliente.`, 
-                0xffaa00
-            );
-        }
+  if (message.channel.name?.startsWith('ticket-')) {
+    const dados = ticketData(message.channel.id, message.author.id);
+    dados.ultimoContato = Date.now();
+    dados.avisoInatividade = false;
+    if (message.attachments.size > 0) {
+      dados.pagamento = 'comprovante_recebido';
+      await message.reply('Aguarde um momento, você já vai ser respondido! ⌛').catch(() => {});
+      await registrarLogTicket(message.guild, message.channel.id, message.channel.name, `<@${message.author.id}>`, '📷 Comprovante/anexo recebido.', 0xffaa00);
     }
+    ticketsAtivos.set(message.channel.id, dados);
+    syncDB();
+  }
 
-    const args = message.content.trim().split(/\s+/);
-    const comando = args[0].toLowerCase();
+  const args = message.content.trim().split(/\s+/);
+  const comando = (args[0] || '').toLowerCase();
+  const admin = isAdmin(message.member, message.author.id);
 
-    if (comando === '!admin_help' || comando === '!adminhelp') {
-        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        if (!eAdmin) return message.reply("❌ Apenas administradores do **RD4X Hub** podem usar este comando!");
+  if (comando === '!admin_help' || comando === '!adminhelp') {
+    if (!admin) return message.reply('❌ Apenas administradores do RD4X podem usar este comando!');
+    const embed = new EmbedBuilder().setTitle('🛡️ RD4X — Comandos de Atendimento').setColor(0xff0033).addFields(
+      { name: '🎫 Tickets', value: '`!painel` • `!fechar` • `!suporte` • `!assumir`' },
+      { name: '🔑 Clientes', value: '`!liberar` • `!retirarpainel` • `!status` • `!tempo`' },
+      { name: '🔄 HWID', value: '`!resetarhwid`' },
+      { name: '🚫 Bloqueios', value: '`!blacklist` • `!unblacklist`' },
+      { name: '📋 Atendimento', value: '`!prioridade` • `!tag` • `!nota` • `!resumo`' },
+      { name: '📈 Dono', value: '`!financeiro` • `!emergencia`' }
+    ).setTimestamp();
+    return message.reply({ embeds: [embed] });
+  }
 
-        const embedAdmin = new EmbedBuilder()
-            .setTitle("🛡️ Painel Administrativo — Comandos de Staff")
-            .setDescription("Abaixo estão listados os comandos restritos para gerenciamento:")
-            .addFields(
-                { name: "🔑 `!liberar [tempo] [nick] [@membro] [valor]`", value: "Libera whitelist, vincula VIP e registra faturamento." },
-                { name: "🔄 `!resetarhwid [nick]`", value: "Reseta o HWID/Aparelho vinculado ao nick do cliente." },
-                { name: "📈 `!financeiro`", value: "Exibe o painel de faturamento e vendas (Exclusivo Dono)." },
-                { name: "🔒 `!retirarpainel [nick]`", value: "Revoga o acesso no Roblox e remove o cargo VIP." },
-                { name: "❌ `!fechar`", value: "Encerra o ticket, envia transcript e limpa mensagens." }
-            )
-            .setColor(0x0088ff)
-            .setFooter({ text: "RD4X Hub • Acesso Restrito" })
-            .setTimestamp();
+  if (comando === '!financeiro' || comando === '!vendas') {
+    if (!isOwner(message.author.id)) return message.reply('❌ Este comando é exclusivo do Dono.');
+    const total = historicoVendas.reduce((a, v) => a + Number(v.valor || 0), 0);
+    return message.reply({ embeds: [new EmbedBuilder().setTitle('📈 RD4X — Financeiro').setColor(0xff0033).addFields(
+      { name: '💎 Clientes ativos', value: String(usuariosLiberados.size), inline: true },
+      { name: '🎮 Execuções', value: String(totalExecucoesGlobais), inline: true },
+      { name: '💰 Faturamento', value: `R$ ${total.toFixed(2)}`, inline: true },
+      { name: '📦 Vendas', value: String(historicoVendas.length), inline: true }
+    ).setTimestamp()] });
+  }
 
-        await message.reply({ embeds: [embedAdmin] });
-        return;
+  if (comando === '!resetarhwid') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    const nick = args[1];
+    if (!nick) return message.reply('⚠️ Use `!resetarhwid [nick]`');
+    const dados = usuariosLiberados.get(nick);
+    if (!dados) return message.reply(`❌ **${nick}** não possui cadastro ativo.`);
+    dados.hwid = 'LIVRE';
+    dados.hwidResetAt = new Date().toISOString();
+    usuariosLiberados.set(nick, dados);
+    audit(message.author.tag, 'reset_hwid', nick);
+    syncDB();
+    return message.reply(`🔄 HWID de **${nick}** resetado. O próximo aparelho válido será vinculado.`);
+  }
+
+  if (comando === '!blacklist') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    const valor = args[1];
+    if (!valor) return message.reply('⚠️ Use `!blacklist [nick/id]`');
+    blacklist.add(valor);
+    audit(message.author.tag, 'blacklist', valor);
+    syncDB();
+    return message.reply(`🚫 **${valor}** foi adicionado à blacklist.`);
+  }
+
+  if (comando === '!unblacklist') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    const valor = args[1];
+    if (!valor) return message.reply('⚠️ Use `!unblacklist [nick/id]`');
+    blacklist.delete(valor);
+    audit(message.author.tag, 'unblacklist', valor);
+    syncDB();
+    return message.reply(`✅ **${valor}** foi removido da blacklist.`);
+  }
+
+  if (comando === '!liberar') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    const tempo = (args[1] || '').toLowerCase();
+    const nick = args[2];
+    const mencao = message.mentions.members.first();
+    const valor = parseFloat(args[4] || args[3]) || 0;
+    if (!tempo || !nick) return message.reply('⚠️ Use `!liberar [tempo] [nick] [@membro] [valor]`');
+    let expiraEm;
+    if (tempo === 'perm' || tempo === 'permanente') expiraEm = 'perm';
+    else {
+      const match = tempo.match(/^(\d+)(d|m|h)?$/);
+      if (!match) return message.reply('⚠️ Tempo inválido. Exemplos: `3d`, `12d`, `1m`, `2m`, `perm`.');
+      const qtd = Number(match[1]);
+      const dias = match[2] === 'm' ? qtd * 30 : match[2] === 'h' ? qtd / 24 : qtd;
+      expiraEm = Date.now() + dias * 86400000;
     }
+    usuariosLiberados.set(nick, { expiraEm, discordId: mencao?.id || null, avisadoExpiracao: false, hwid: 'LIVRE', valorPago: valor, dataVenda: new Date().toISOString() });
+    if (valor > 0) historicoVendas.push({ nick, valor, data: new Date().toISOString() });
+    if (mencao && ID_CARGO_CLIENTE) await mencao.roles.add(ID_CARGO_CLIENTE).catch(() => {});
+    audit(message.author.tag, 'release', nick, { tempo, valor });
+    db.releaseWindow.push(Date.now());
+    db.releaseWindow = db.releaseWindow.filter(t => Date.now() - t < 900000);
+    if (db.releaseWindow.length > 50) incident('mass_release_threshold', 'critical', { count: db.releaseWindow.length });
+    syncDB();
+    return message.reply(`✅ Acesso liberado para **${nick}** por **${tempo}**${mencao ? ` • VIP concedido a <@${mencao.id}>.` : ''}`);
+  }
 
-    if (comando === '!financeiro' || comando === '!vendas') {
-        if (message.author.id !== ID_DONO) {
-            return message.reply("❌ Este comando é exclusivo do **Dono** do RD4X Hub!");
-        }
-
-        let faturamentoTotal = historicoVendas.reduce((acc, v) => acc + (v.valor || 0), 0);
-
-        const embedFinanceiro = new EmbedBuilder()
-            .setTitle("📈 Painel Financeiro & Estatísticas — RD4X Hub")
-            .setColor(0x00ff88)
-            .addFields(
-                { name: "💎 Clientes VIP Ativos", value: `\`${usuariosLiberados.size}\` clientes`, inline: true },
-                { name: "🎮 Injeções no Roblox", value: `\`${totalExecucoesGlobais}\` execuções`, inline: true },
-                { name: "💰 Faturamento Registrado", value: `\`R$ ${faturamentoTotal.toFixed(2)}\``, inline: true },
-                { name: "📦 Total de Vendas", value: `\`${historicoVendas.length}\` vendas realizadas`, inline: true }
-            )
-            .setFooter({ text: "RD4X Hub • Dados Confidenciais" })
-            .setTimestamp();
-
-        await message.reply({ embeds: [embedFinanceiro] });
-        return;
+  if (comando === '!retirarpainel') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    const nick = args[1];
+    if (!nick) return message.reply('⚠️ Use `!retirarpainel [nick]`');
+    const dados = usuariosLiberados.get(nick);
+    const guild = message.guild;
+    if (dados?.discordId && ID_CARGO_CLIENTE) {
+      const member = await guild.members.fetch(dados.discordId).catch(() => null);
+      if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
     }
+    usuariosLiberados.delete(nick);
+    audit(message.author.tag, 'revoke_panel', nick);
+    syncDB();
+    return message.reply(`🔒 Painel de **${nick}** revogado.`);
+  }
 
-    if (comando === '!resetarhwid') {
-        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        if (!eAdmin) return message.reply("❌ Sem permissão!");
+  if (comando === '!status') {
+    const nick = args[1];
+    if (!nick) return message.reply('⚠️ Use `!status [nick]`');
+    return message.reply(usuariosLiberados.has(nick) || nick === ID_DONO ? `🟢 **${nick}** possui painel ativo.` : `🔴 **${nick}** não possui registro ativo.`);
+  }
 
-        const nickRoblox = args[1];
-        if (!nickRoblox) return message.reply("⚠️ Uso correto: `!resetarhwid [nick]`");
+  if (comando === '!tempo') {
+    const nick = args[1];
+    if (!nick) return message.reply('⚠️ Use `!tempo [nick]`');
+    const dados = usuariosLiberados.get(nick);
+    if (!dados) return message.reply(`❌ **${nick}** não está cadastrado.`);
+    if (dados.expiraEm === 'perm') return message.reply(`♾️ **${nick}** possui painel permanente.`);
+    const restante = dados.expiraEm - Date.now();
+    if (restante <= 0) return message.reply(`⏱️ O painel de **${nick}** já expirou.`);
+    return message.reply(`⏳ Restam aproximadamente **${Math.ceil(restante / 86400000)} dia(s)** para **${nick}**.`);
+  }
 
-        if (usuariosLiberados.has(nickRoblox)) {
-            const dados = usuariosLiberados.get(nickRoblox);
-            dados.hwid = "LIVRE";
-            usuariosLiberados.set(nickRoblox, dados);
+  if (comando === '!suporte') return message.reply({ content: `🆘 **Ajuda solicitada!**\n\nAguarde os administradores. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
 
-            await message.reply(`🔄 O HWID do jogador **${nickRoblox}** foi resetado! O novo aparelho que entrar primeiro vai ser vinculado.`);
-            await registrarLogTicket(message.guild, message.channel.id, message.channel.name, `<@${message.author.id}>`, `🔄 HWID resetado para **${nickRoblox}**.`, 0x00aaff);
-        } else {
-            await message.reply(`❌ O jogador **${nickRoblox}** não possui cadastro ativo.`);
-        }
-        return;
-    }
+  if (comando === '!assumir') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    if (!message.channel.name.startsWith('ticket-')) return message.reply('❌ Use dentro de um ticket.');
+    const dados = ticketData(message.channel.id, message.channel.id);
+    dados.assumidoPor = { id: message.author.id, tag: message.author.tag, at: new Date().toISOString() };
+    dados.status = 'em_atendimento';
+    ticketsAtivos.set(message.channel.id, dados);
+    audit(message.author.tag, 'ticket_takeover', message.channel.name);
+    syncDB();
+    return message.reply(`🧑‍💻 Ticket assumido por **${message.author.tag}**.`);
+  }
 
-    if (comando === '!painel') {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('criar_ticket')
-                .setLabel('Criar Ticket')
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('🎫')
-        );
+  if (comando === '!prioridade') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    if (!message.channel.name.startsWith('ticket-')) return message.reply('❌ Use dentro de um ticket.');
+    const p = (args[1] || '').toLowerCase();
+    if (!['baixa','normal','alta','urgente'].includes(p)) return message.reply('⚠️ Use: `baixa`, `normal`, `alta` ou `urgente`.');
+    const dados = ticketData(message.channel.id);
+    dados.prioridade = p; ticketsAtivos.set(message.channel.id, dados); audit(message.author.tag, 'ticket_priority', message.channel.name, { prioridade: p }); syncDB();
+    return message.reply(`🚦 Prioridade definida como **${p}**.`);
+  }
 
-        await message.delete().catch(() => {});
-        await message.channel.send({
-            content: `Clique no botão abaixo para criar seu ticket e adquirir seu Painel Admin:`,
-            components: [row]
-        });
-        return;
-    }
+  if (comando === '!tag') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    if (!message.channel.name.startsWith('ticket-')) return message.reply('❌ Use dentro de um ticket.');
+    const tag = args.slice(1).join(' ');
+    if (!tag) return message.reply('⚠️ Use `!tag pagamento`, por exemplo.');
+    const dados = ticketData(message.channel.id); dados.tags ||= []; if (!dados.tags.includes(tag)) dados.tags.push(tag); ticketsAtivos.set(message.channel.id, dados); syncDB();
+    return message.reply(`🏷️ Tag **${tag}** adicionada.`);
+  }
 
-    if (comando === '!ajuda' || comando === '!help') {
-        const embedAjuda = new EmbedBuilder()
-            .setTitle("🤖 Central de Ajuda — RD4X Hub")
-            .setDescription("Aqui estão os comandos disponíveis para consulta e suporte:")
-            .addFields(
-                { name: "🎫 `!suporte`", value: "Chama os administradores no ticket.", inline: false },
-                { name: "⏳ `!tempo [seu-nick]`", value: "Consulta quantos dias restam para o seu painel expirar.", inline: false },
-                { name: "📦 `!status [seu-nick]`", value: "Verifica se o seu nick possui o painel ativo.", inline: false }
-            )
-            .setColor(0x00ffcc)
-            .setFooter({ text: "RD4X Hub • Todos os direitos reservados" })
-            .setTimestamp();
+  if (comando === '!nota') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    if (!message.channel.name.startsWith('ticket-')) return message.reply('❌ Use dentro de um ticket.');
+    const nota = args.slice(1).join(' ');
+    if (!nota) return message.reply('⚠️ Escreva a nota.');
+    const dados = ticketData(message.channel.id); dados.notas ||= []; dados.notas.push({ by: message.author.tag, text: nota, at: new Date().toISOString() }); ticketsAtivos.set(message.channel.id, dados); audit(message.author.tag, 'ticket_note', message.channel.name); syncDB();
+    return message.reply('📝 Nota interna registrada.');
+  }
 
-        await message.reply({ embeds: [embedAjuda] });
-        return;
-    }
+  if (comando === '!resumo') {
+    if (!admin) return message.reply('❌ Sem permissão!');
+    if (!message.channel.name.startsWith('ticket-')) return message.reply('❌ Use dentro de um ticket.');
+    const dados = ticketData(message.channel.id);
+    return message.reply({ embeds: [new EmbedBuilder().setTitle(`🎫 Resumo — ${message.channel.name}`).setColor(0xff0033).addFields(
+      { name: 'Status', value: dados.status || 'open', inline: true },
+      { name: 'Prioridade', value: dados.prioridade || 'normal', inline: true },
+      { name: 'Pagamento', value: dados.pagamento || 'não informado', inline: true },
+      { name: 'Responsável', value: dados.assumidoPor?.tag || 'não assumido', inline: true },
+      { name: 'Tags', value: dados.tags?.join(', ') || 'nenhuma', inline: true },
+      { name: 'Notas', value: dados.notas?.length ? `${dados.notas.length} nota(s)` : 'nenhuma', inline: true }
+    ).setTimestamp()] });
+  }
 
-    if (comando === '!liberar') {
-        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        if (!eAdmin) return message.reply("❌ Sem permissão!");
+  if (comando === '!painel') {
+    const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('criar_ticket').setLabel('Criar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🎫'));
+    await message.delete().catch(() => {});
+    return message.channel.send({ content: '🎫 **RD4X Hub — Atendimento**\n\nClique abaixo para abrir um ticket e adquirir/renovar seu Painel.', components: [row] });
+  }
 
-        let tempoInput = args[1]?.toLowerCase();
-        let nickRoblox = args[2];
-        
-        if (!nickRoblox) {
-            nickRoblox = args[1];
-            tempoInput = "perm"; 
-        }
+  if (comando === '!ajuda' || comando === '!help') {
+    return message.reply({ embeds: [new EmbedBuilder().setTitle('🤖 Central de Ajuda — RD4X Hub').setColor(0xff0033).setDescription('Comandos para clientes e atendimento.').addFields(
+      { name: '🎫 Atendimento', value: '`!suporte` — chama a equipe.' },
+      { name: '⏳ Seu painel', value: '`!tempo [nick]` — tempo restante.\n`!status [nick]` — situação do painel.' },
+      { name: '🛡️ Staff', value: 'Administradores: use `!admin_help` para ver os comandos.' }
+    ).setTimestamp()] });
+  }
 
-        const mencaoDiscord = message.mentions.members.first();
-        const valorComprado = parseFloat(args[4] || args[3]) || 0;
-
-        if (!tempoInput || !nickRoblox) {
-            return message.reply("⚠️ Uso correto: `!liberar [tempo] [nick] [@membro_opcional] [valor_opcional]`\nExemplo: `!liberar 30d Jogador123 @Cliente 15`");
-        }
-
-        let tempoExpiracao;
-        let textoTempoExibicao = "";
-
-        if (tempoInput === "perm" || tempoInput === "permanente") {
-            tempoExpiracao = "perm";
-            textoTempoExibicao = "permanente (vitalício)";
-        } else {
-            const match = tempoInput.match(/^(\d+)([a-z]*)$/);
-            if (!match) return message.reply("⚠️ Formato de tempo inválido! Use `30d`, `perm` ou `1m`.");
-
-            const quantidade = parseInt(match[1]);
-            const unidade = match[2] || 'd';
-
-            let diasTotais = quantidade;
-            if (unidade === 'm') diasTotais = quantidade * 30;
-            else if (unidade === 'h') diasTotais = quantidade / 24;
-
-            tempoExpiracao = Date.now() + (diasTotais * 24 * 60 * 60 * 1000);
-            textoTempoExibicao = `${quantidade} ${unidade === 'm' ? 'mês/meses' : 'dia(s)'}`;
-        }
-
-        usuariosLiberados.set(nickRoblox, {
-            expiraEm: tempoExpiracao,
-            discordId: mencaoDiscord ? mencaoDiscord.id : null,
-            avisadoExpiracao: false,
-            hwid: "LIVRE", 
-            valorPago: valorComprado,
-            dataVenda: new Date()
-        });
-
-        if (valorComprado > 0) {
-            historicoVendas.push({ nick: nickRoblox, valor: valorComprado, data: new Date() });
-        }
-
-        if (mencaoDiscord && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
-            await mencaoDiscord.roles.add(ID_CARGO_CLIENTE).catch(() => {});
-        }
-
-        await message.reply(`✅ Acesso liberado para **${nickRoblox}** por **${textoTempoExibicao}**!${mencaoDiscord ? ` Cargo VIP concedido a <@${mencaoDiscord.id}>.` : ''}`);
-        
-        if (message.channel.name?.startsWith('ticket-')) {
-            await registrarLogTicket(
-                message.guild, 
-                message.channel.id, 
-                message.channel.name, 
-                `<@${message.author.id}>`, 
-                `🔓 Acesso liberado no Roblox para **${nickRoblox}** (${textoTempoExibicao}) por ${message.author.tag}.`, 
-                0x00ff88
-            );
-        }
-        return;
-    }
-
-    if (comando === '!retirarpainel') {
-        const eAdmin = message.member.roles.cache.has(ID_CARGO_ADMIN) || message.author.id === ID_DONO;
-        if (!eAdmin) return message.reply("❌ Sem permissão!");
-
-        const nickRoblox = args[1];
-        if (!nickRoblox) return message.reply("⚠️ Uso correto: `!retirarpainel [nick]`");
-        
-        const dados = usuariosLiberados.get(nickRoblox);
-        if (dados && dados.discordId && ID_CARGO_CLIENTE && !ID_CARGO_CLIENTE.includes("SEU_ID")) {
-            const member = await message.guild.members.fetch(dados.discordId).catch(() => {});
-            if (member) await member.roles.remove(ID_CARGO_CLIENTE).catch(() => {});
-        }
-
-        usuariosLiberados.delete(nickRoblox);
-        await message.reply(`🔒 O painel de **${nickRoblox}** foi revogado.`);
-        return;
-    }
-
-    if (comando === '!status') {
-        const nickRoblox = args[1];
-        if (!nickRoblox) return message.reply("⚠️ Uso correto: `!status [nick]`");
-        
-        if (usuariosLiberados.has(nickRoblox) || nickRoblox === ID_DONO) {
-            await message.reply(`🟢 O jogador **${nickRoblox}** possui um painel **ativo**.`);
-        } else {
-            await message.reply(`🔴 O jogador **${nickRoblox}** **não** possui registro ativo.`);
-        }
-        return;
-    }
-
-    if (comando === '!tempo') {
-        const nickRoblox = args[1];
-        if (!nickRoblox) return message.reply("⚠️ Uso correto: `!tempo [nick]`");
-
-        if (usuariosLiberados.has(nickRoblox)) {
-            const dados = usuariosLiberados.get(nickRoblox);
-            const expiraEm = typeof dados === 'object' ? dados.expiraEm : dados;
-            
-            if (expiraEm === "perm") return message.reply(`♾️ O painel de **${nickRoblox}** é **Permanente**.`);
-
-            const tempoRestante = expiraEm - Date.now();
-            if (tempoRestante <= 0) return message.reply(`⏱️ O painel de **${nickRoblox}** já expirou.`);
-            
-            const diasRestantes = Math.ceil(tempoRestante / (1000 * 60 * 60 * 24));
-            await message.reply(`⏳ Restam aproximadamente **${diasRestantes} dia(s)** para o painel de **${nickRoblox}** expirar.`);
-        } else {
-            await message.reply(`❌ O jogador **${nickRoblox}** não está cadastrado.`);
-        }
-        return;
-    }
-
-    if (comando === '!suporte') {
-        let msgSuporte = `🆘 **Ajuda solicitada!**\n\nAguarde os administradores. <@&${ID_CARGO_ADMIN}>`;
-        await message.reply({ content: msgSuporte, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
-        return;
-    }
-
-    if (comando === '!fechar') {
-        if (!message.channel.name.startsWith('ticket-')) {
-            return message.reply("❌ Este comando só pode ser usado dentro de um canal de ticket!");
-        }
-
-        await message.reply("🔒 Baixando histórico de conversas, enviando transcript e fechando o ticket...");
-
-        let arquivoTranscript = null;
-        try {
-            const colecaoMensagens = await message.channel.messages.fetch({ limit: 100 });
-            const conversas = colecaoMensagens.reverse().map(m => `[${m.createdAt.toLocaleString('pt-BR')}] ${m.author.tag}: ${m.content}`).join('\n');
-            
-            const bufferTranscript = Buffer.from(conversas, 'utf-8');
-            arquivoTranscript = new AttachmentBuilder(bufferTranscript, { name: `transcript-${message.channel.name}.txt` });
-        } catch (e) {
-            console.error("Erro ao gerar transcript:", e);
-        }
-
-        try {
-            const mensagens = await message.channel.messages.fetch({ limit: 20 });
-            for (const [id, msg] of mensagens) {
-                if (msg.author.id === client.user.id || msg.content.toLowerCase().includes('!painel')) {
-                    await msg.delete().catch(() => {});
-                }
-            }
-        } catch (e) {}
-
-        if (ID_CANAL_LOGS && arquivoTranscript) {
-            const canalLogs = message.guild.channels.cache.get(ID_CANAL_LOGS);
-            if (canalLogs) {
-                await canalLogs.send({ 
-                    content: `📑 **Transcript em Anexo:** Conversa completa do canal \`${message.channel.name}\` fechado por **${message.author.tag}**.`,
-                    files: [arquivoTranscript]
-                }).catch(() => {});
-            }
-        }
-
-        await registrarLogTicket(
-            message.guild, 
-            message.channel.id, 
-            message.channel.name, 
-            `<@${message.author.id}>`, 
-            `🔒 Ticket encerrado e arquivo de histórico (Transcript) salvo.`, 
-            0xff0044
-        );
-
-        setTimeout(async () => {
-            ticketsAtivos.delete(message.channel.id);
-            await message.channel.delete().catch(() => {});
-        }, 3000);
-        return;
-    }
-
-    // --- SISTEMA DE IA COM FALLBACK (GEMINI -> GROK) ---
-    if (message.mentions.has(client.user) || !comando.startsWith('!')) {
-        
-        // Aviso amigável caso as chaves não estejam configuradas
-        if (!process.env.GEMINI_API_KEY && !process.env.GROK_API_KEY) {
-            return message.reply("⚠️ O sistema de IA não está configurado. O Dono precisa adicionar `GEMINI_API_KEY` ou `GROK_API_KEY` na aba **Ambiente** da hospedagem.");
-        }
-
-        try {
-            await message.channel.sendTyping();
-
-            let textoUsuario = message.content
-                .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
-                .trim();
-
-            if (!textoUsuario) return;
-
-            let respostaIA = "";
-
-            // 1ª Tentativa: GEMINI
-            if (ai) {
-                try {
-                    const response = await ai.models.generateContent({
-                        model: 'gemini-1.5-flash',
-                        contents: textoUsuario,
-                    });
-                    respostaIA = response.text;
-                } catch (erroGemini) {
-                    console.log("[IA] Gemini falhou. Acionando o Grok...", erroGemini.message);
-                }
-            }
-
-            // 2ª Tentativa: GROK (Só roda se o Gemini falhou ou se não tem a chave dele)
-            if (!respostaIA && process.env.GROK_API_KEY) {
-                try {
-                    const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${process.env.GROK_API_KEY}`
-                        },
-                        body: JSON.stringify({
-                            model: "grok-beta",
-                            messages: [{ role: "user", content: textoUsuario }]
-                        })
-                    });
-                    
-                    const grokData = await grokRes.json();
-                    if (grokData.choices && grokData.choices.length > 0) {
-                        respostaIA = grokData.choices[0].message.content;
-                    } else {
-                        console.log("Erro Grok:", grokData);
-                    }
-                } catch (erroGrok) {
-                    console.error("Erro no Grok também:", erroGrok);
-                }
-            }
-
-            if (respostaIA) {
-                await message.reply(respostaIA);
-            } else {
-                await message.reply("❌ As IAs estão offline ou as chaves de API estão inválidas/sem limite.");
-            }
-
-        } catch (erro) {
-            console.error("Erro geral na IA:", erro);
-        }
-    }
+  if (comando === '!fechar') {
+    if (!message.channel.name.startsWith('ticket-')) return message.reply('❌ Este comando só pode ser usado dentro de um ticket!');
+    if (!admin) return message.reply('❌ Apenas a equipe pode fechar tickets.');
+    await message.reply('🔒 Gerando transcript e encerrando o ticket...');
+    let transcriptPath = null;
+    try {
+      const mensagens = await message.channel.messages.fetch({ limit: 100 });
+      const texto = mensagens.reverse().map(m => `[${m.createdAt.toLocaleString('pt-BR')}] ${m.author.tag}: ${m.content}`).join('\n');
+      transcriptPath = path.join(TRANSCRIPT_DIR, `transcript-${message.channel.id}-${Date.now()}.txt`);
+      fs.writeFileSync(transcriptPath, texto, 'utf8');
+      const attachment = new AttachmentBuilder(Buffer.from(texto, 'utf8'), { name: path.basename(transcriptPath) });
+      const canalLogs = message.guild.channels.cache.get(ID_CANAL_LOGS);
+      if (canalLogs) await canalLogs.send({ content: `📑 **Transcript:** ${message.channel.name} fechado por **${message.author.tag}**.`, files: [attachment] }).catch(() => {});
+    } catch (e) { console.error('[TRANSCRIPT]', e); }
+    const dados = ticketData(message.channel.id); dados.status = 'closed'; dados.closedBy = message.author.tag; dados.closedAt = new Date().toISOString(); ticketsAtivos.set(message.channel.id, dados);
+    audit(message.author.tag, 'ticket_close', message.channel.name, { transcriptPath });
+    await registrarLogTicket(message.guild, message.channel.id, message.channel.name, `<@${message.author.id}>`, '🔒 Ticket encerrado e transcript salvo.', 0xff0033);
+    syncDB();
+    setTimeout(async () => { ticketsAtivos.delete(message.channel.id); syncDB(); await message.channel.delete().catch(() => {}); }, 3000);
+    return;
+  }
 });
 
 client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
+  if (!interaction.isButton()) return;
+  if (interaction.customId !== 'criar_ticket') return;
 
-    if (interaction.customId === 'criar_ticket') {
-        const guild = interaction.guild;
-        const member = interaction.member;
+  const guild = interaction.guild;
+  const member = interaction.member;
+  const agora = new Date();
+  const horas = (agora.getUTCHours() - 3 + 24) % 24;
+  if (horas < 6 || horas >= 22) return interaction.reply({ content: '🌙 **Atendimento encerrado.** Funcionamento: **06:00 às 22:00**.', ephemeral: true });
 
-        const tempoUltimoTicket = cooldownTickets.get(member.id);
-        if (tempoUltimoTicket && (Date.now() - tempoUltimoTicket < 300000)) {
-            const tempoRestante = Math.ceil((300000 - (Date.now() - tempoUltimoTicket)) / 1000);
-            return interaction.reply({ content: `⏳ Por favor, aguarde **${tempoRestante} segundos** antes de abrir outro ticket.`, ephemeral: true });
-        }
+  const ultimo = Number(cooldownTickets.get(member.id) || 0);
+  const restante = 60000 - (Date.now() - ultimo); // 1 minuto, conforme configuração atual
+  if (ultimo && restante > 0) return interaction.reply({ content: `⏳ Aguarde **${Math.ceil(restante / 1000)} segundos** para abrir outro ticket.`, ephemeral: true });
 
-        if (blacklist.has(member.user.username) || blacklist.has(member.id)) {
-            return interaction.reply({ content: `❌ Você está bloqueado de abrir tickets.`, ephemeral: true });
-        }
+  if (blacklist.has(member.user.username) || blacklist.has(member.id)) return interaction.reply({ content: '❌ Você está bloqueado de abrir tickets.', ephemeral: true });
 
-        const parentCategory = interaction.channel.parentId;
-        const nomeCanal = `ticket-${member.user.username}`.toLowerCase();
-        
-        const canalExistente = guild.channels.cache.find(c => c.name === nomeCanal);
-        if (canalExistente) {
-            return interaction.reply({ content: `❌ Você já tem um ticket aberto: ${canalExistente}`, ephemeral: true });
-        }
+  const nomeCanal = `ticket-${member.user.username}`.toLowerCase();
+  const existente = guild.channels.cache.find(c => c.name === nomeCanal);
+  if (existente) return interaction.reply({ content: `❌ Você já possui um ticket aberto: ${existente}`, ephemeral: true });
 
-        cooldownTickets.set(member.id, Date.now());
+  cooldownTickets.set(member.id, Date.now());
+  const parentCategory = interaction.channel.parentId;
+  const channel = await guild.channels.create({
+    name: nomeCanal,
+    type: ChannelType.GuildText,
+    parent: parentCategory,
+    permissionOverwrites: [
+      { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+      { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+      { id: ID_DONO, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+      { id: ID_CARGO_ADMIN, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+    ]
+  });
 
-        const channel = await guild.channels.create({
-            name: nomeCanal,
-            type: ChannelType.GuildText,
-            parent: parentCategory,
-            permissionOverwrites: [
-                { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                { id: ID_DONO, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                { id: ID_CARGO_ADMIN, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-            ],
-        });
+  ticketsAtivos.set(channel.id, { userId: member.id, username: member.user.username, status: 'aberto', prioridade: 'normal', pagamento: 'aguardando_comprovante', tags: ['venda'], notas: [], logs: [], ultimoContato: Date.now(), avisoInatividade: false });
+  syncDB();
 
-        let textoTicket = `Para adquirir seu Painel Admin, envie o pix para a chave abaixo:\n` +
-            `\`${CHAVE_PIX}\`\n\n` +
-            `Após isso, envie o comprovante, seu nick no Roblox e a confirmação da quantidade de dias.`;
-
-        await channel.send({ content: `<@${member.user.id}>\n\n` + textoTicket, allowedMentions: { users: [member.user.id] } });
-        await channel.send({ content: `Aguarde os responsáveis analisarem o comprovante. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
-
-        await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.user.id}>`, `🟢 Ticket criado pelo cliente.`, 0x00ffcc);
-
-        await interaction.reply({ content: `✅ Seu ticket foi criado com sucesso! Você pode acessar ele aqui: ${channel}`, ephemeral: true });
-    }
+  await channel.send({ content: `<@${member.user.id}>\n\n💳 **Para adquirir seu Painel Admin**\n\nEnvie o PIX para:\n\`${CHAVE_PIX}\`\n\nDepois envie seu **nick do Roblox**, **plano/duração** e o **comprovante de pagamento**.`, allowedMentions: { users: [member.user.id] } });
+  await channel.send({ content: `Aguarde a análise do comprovante. <@&${ID_CARGO_ADMIN}>`, allowedMentions: { roles: [ID_CARGO_ADMIN] } });
+  await registrarLogTicket(guild, channel.id, nomeCanal, `<@${member.id}>`, '🟢 Ticket criado pelo cliente.', 0xff0033);
+  audit(member.user.tag, 'ticket_create', channel.id);
+  return interaction.reply({ content: `✅ Ticket criado: ${channel}`, ephemeral: true });
 });
+
+// Encerramento seguro: salva tudo antes de o processo morrer.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    try { syncDB(); saveDB(true); } finally { process.exit(0); }
+  });
+}
 
 client.login(process.env.DISCORD_TOKEN);
