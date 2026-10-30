@@ -236,7 +236,6 @@ app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
   }
 });
 
-app.get('/api/dashboard/tickets', dashboardAuth, (req, res) => {
 
 app.get('/api/dashboard/tickets', dashboardAuth, (req, res) => {
   res.json({ success: true, data: [...ticketsAtivos.entries()].map(([channelId, t]) => ({ channelId, ...t })) });
