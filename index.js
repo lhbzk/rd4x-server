@@ -2,7 +2,6 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // O Worker atualmente aceita apenas GET
     if (request.method !== "GET") {
       return new Response(
         JSON.stringify({
@@ -18,7 +17,6 @@ export default {
       );
     }
 
-    // Rotas do Dashboard → API do bot
     const routes = {
       "/api/rd4x/overview":
         "/api/dashboard/overview",
@@ -49,13 +47,13 @@ export default {
         {
           status: 404,
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type":
+              "application/json"
           }
         }
       );
     }
 
-    // Verifica as configurações do Worker
     if (
       !env.RD4X_API_URL ||
       !env.DASHBOARD_API_KEY
@@ -69,7 +67,8 @@ export default {
         {
           status: 500,
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type":
+              "application/json"
           }
         }
       );
@@ -110,7 +109,6 @@ export default {
       );
 
     } catch (error) {
-
       console.error(
         "[WORKER] Erro:",
         error
