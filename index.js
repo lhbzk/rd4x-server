@@ -193,6 +193,51 @@ app.get('/api/dashboard/users', dashboardAuth, (req, res) => {
   res.json({ success: true, data });
 });
 
+app.get('/api/dashboard/admins', dashboardAuth, async (req, res) => {
+  try {
+    const guild = await getGuild();
+
+    if (!guild) {
+      return res.status(404).json({
+        success: false,
+        error: 'Servidor Discord não encontrado'
+      });
+    }
+
+    const membros = await guild.members.fetch();
+
+    const admins = membros
+      .filter(member =>
+        member.user &&
+        (member.id === ID_DONO || member.roles.cache.has(ID_CARGO_ADMIN))
+      )
+      .map(member => ({
+        id: member.id,
+        discordId: member.id,
+        name: member.user.username,
+        tag: member.user.tag,
+        avatar: member.user.displayAvatarURL({ size: 128 }),
+        isOwner: member.id === ID_DONO,
+        status: member.presence?.status || 'offline'
+      }));
+
+    res.json({
+      success: true,
+      data: admins
+    });
+
+  } catch (error) {
+    console.error('[DASHBOARD ADMINS]', error);
+
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar administradores'
+    });
+  }
+});
+
+app.get('/api/dashboard/tickets', dashboardAuth, (req, res) => {
+
 app.get('/api/dashboard/tickets', dashboardAuth, (req, res) => {
   res.json({ success: true, data: [...ticketsAtivos.entries()].map(([channelId, t]) => ({ channelId, ...t })) });
 });
