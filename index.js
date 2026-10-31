@@ -677,31 +677,64 @@ res.json({
 // AUTENTICAÇÃO DASHBOARD
 // ============================================================
 
-function dashboardAuth(
-req,
-res,
-next
-) {
-if (!DASHBOARD_API_KEY) {
-return res.status(503).json({
-success: false,
-error:
-'DASHBOARD_API_KEY não configurada'
-});
-}
+function dashboardAuth(req, res, next) {
+  const expectedKey =
+    String(process.env.DASHBOARD_API_KEY || '').trim();
 
-if (
-req.headers.authorization !==
-"Bearer ${DASHBOARD_API_KEY}"
-) {
-return res.status(401).json({
-success: false,
-error:
-'Não autorizado'
-});
-}
+  const authorization =
+    String(req.get('authorization') || '').trim();
 
-next();
+  if (!expectedKey) {
+    console.error(
+      '[DASHBOARD AUTH] DASHBOARD_API_KEY não está carregada no processo.'
+    );
+
+    return res.status(503).json({
+      success: false,
+      error: 'DASHBOARD_API_KEY não configurada'
+    });
+  }
+
+  if (!authorization) {
+    console.error(
+      '[DASHBOARD AUTH] Requisição chegou sem Authorization.'
+    );
+
+    return res.status(401).json({
+      success: false,
+      error: 'Não autorizado'
+    });
+  }
+
+  const match =
+    authorization.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    console.error(
+      '[DASHBOARD AUTH] Authorization recebido em formato inválido.'
+    );
+
+    return res.status(401).json({
+      success: false,
+      error: 'Não autorizado'
+    });
+  }
+
+  const receivedKey =
+    String(match[1] || '').trim();
+
+  if (receivedKey !== expectedKey) {
+    console.error(
+      `[DASHBOARD AUTH] Chave diferente. Recebida: ${receivedKey.length} caracteres | Esperada: ${expectedKey.length} caracteres.`
+    );
+
+    return res.status(401).json({
+      success: false,
+      error: 'Não autorizado'
+    });
+  }
+
+  next();
 }
 
 // ============================================================
