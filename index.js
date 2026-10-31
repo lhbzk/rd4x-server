@@ -148,7 +148,7 @@ incidentes: [],
 
 adminDevices: {},
 
-releaseWindow: []
+releaseWindow: [],
 
 dashboardCodes: {}
 };
@@ -2323,7 +2323,7 @@ data: []
           (linha, index) => {
             const match =
               linha.match(
-                /^([^]+)\]\s+([^:]+):\s?(.*)$/
+                /^\[([^\]]+)\]\s+([^:]+):\s?(.*)$/ 
               );
 
             if (match) {
@@ -2480,8 +2480,8 @@ new Client({
 // ============================================================
 
 client.once(
-'ready',
-() => {
+  'ready',
+  async () => {
 console.log(
   `[SUCESSO] Bot online como ${client.user.tag}!`
 );
@@ -4231,81 +4231,75 @@ if (
 // ============================================================
 // INTERAÇÕES
 // ============================================================
-
 client.on(
-'interactionCreate',
-if (
-  interaction.isChatInputCommand() &&
-  interaction.commandName ===
-    'dashboard-senha'
-) {
-  if (
-    interaction.channelId !==
-    ID_CANAL_SENHA_DASHBOARD
-  ) {
-    return interaction.reply({
-      content:
-        '❌ Este comando só pode ser usado no canal oficial de autenticação do Dashboard.',
+  'interactionCreate',
+  async interaction => {
 
-      ephemeral: true
-    });
-  }
+    if (
+      interaction.isChatInputCommand() &&
+      interaction.commandName === 'dashboard-senha'
+    ) {
+      // senha do dashboard
+// ========================================================
+// SLASH COMMAND — SENHA DO DASHBOARD
+// ========================================================
 
-  const member =
-    interaction.member;
-
-  const admin =
-    isAdmin(
-      member,
-      interaction.user.id
+try {
+  const rest =
+    new REST({
+      version: '10'
+    }).setToken(
+      process.env.DISCORD_TOKEN
     );
 
-  if (!admin) {
-    return interaction.reply({
-      content:
-        '❌ Apenas administradores do RD4X podem gerar uma senha do Dashboard.',
+  const command =
+    new SlashCommandBuilder()
+      .setName(
+        'dashboard-senha'
+      )
+      .setDescription(
+        'Gera uma senha temporária para acessar o RD4X Dashboard.'
+      );
 
-      ephemeral: true
-    });
+  if (GUILD_ID) {
+    await rest.put(
+      Routes.applicationGuildCommands(
+        DISCORD_CLIENT_ID,
+        GUILD_ID
+      ),
+      {
+        body: [
+          command.toJSON()
+        ]
+      }
+    );
   }
 
-  const code =
-    createDashboardCode(
-      interaction.user.id
-    );
-
-  audit(
-    interaction.user.tag,
-    'dashboard_code_generated',
-    interaction.user.id
+  console.log(
+    '[DASHBOARD] Slash command /dashboard-senha registrado.'
   );
 
-  return interaction.reply({
-    content:
-      `🔐 **Senha temporária do RD4X Dashboard**\n\n` +
-      `\`${code}\`\n\n` +
-      `⏱️ Esta senha expira em **5 minutos**.\n` +
-      `♻️ Ela só pode ser utilizada **uma vez**.\n\n` +
-      `⚠️ **Só você pode ver esta mensagem.**`,
-
-    ephemeral: true
-  });
+} catch (error) {
+  console.error(
+    '[DASHBOARD] Erro ao registrar /dashboard-senha:',
+    error
+  );
 }
-async interaction => {
-if (
-!interaction.isButton()
-) {
-return;
-}
+      return;
+    }
 
-if (
-  interaction.customId !==
-  'criar_ticket'
-) {
-  return;
-}
+    if (!interaction.isButton()) {
+      return;
+    }
 
-const guild =
+    if (
+      interaction.customId !== 'criar_ticket'
+    ) {
+      return;
+    }
+
+    // código atual de criação do ticket...
+  const guild =
   interaction.guild;
 
 const member =
