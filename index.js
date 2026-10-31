@@ -1,13 +1,16 @@
 const {
-Client,
-GatewayIntentBits,
-ActionRowBuilder,
-ButtonBuilder,
-ButtonStyle,
-ChannelType,
-PermissionFlagsBits,
-EmbedBuilder,
-AttachmentBuilder
+  Client,
+  GatewayIntentBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  PermissionFlagsBits,
+  EmbedBuilder,
+  AttachmentBuilder,
+  REST,
+  Routes,
+  SlashCommandBuilder
 } = require('discord.js');
 
 const express = require('express');
@@ -101,6 +104,24 @@ process.env.GUILD_ID ||
 const DASHBOARD_API_KEY =
 process.env.DASHBOARD_API_KEY ||
 '';
+const DISCORD_CLIENT_ID =
+  process.env.DISCORD_CLIENT_ID ||
+  '';
+
+const DISCORD_CLIENT_SECRET =
+  process.env.DISCORD_CLIENT_SECRET ||
+  '';
+
+const DISCORD_OAUTH_REDIRECT_URI =
+  process.env.DISCORD_OAUTH_REDIRECT_URI ||
+  '';
+
+const ID_CANAL_SENHA_DASHBOARD =
+  process.env.ID_CANAL_SENHA_DASHBOARD ||
+  '1566184054670360617';
+
+const DASHBOARD_CODE_TTL =
+  5 * 60 * 1000;
 
 // ============================================================
 // BANCO PADRÃO
@@ -128,6 +149,8 @@ incidentes: [],
 adminDevices: {},
 
 releaseWindow: []
+
+dashboardCodes: {}
 };
 
 // ============================================================
@@ -187,7 +210,7 @@ saveTimer
 
 const write = () => {
 const tmp =
-"${DB_FILE}.tmp";
+  `${DB_FILE}.tmp`; 
 
 fs.writeFileSync(
   tmp,
@@ -397,6 +420,198 @@ return (
 userId === ID_DONO
 );
 }
+// ============================================================
+// AUTENTICAÇÃO DO DASHBOARD — CÓDIGOS DE USO ÚNICO
+// ============================================================
+
+function normalizeDashboardCode(code) {
+  return String(code || '')
+    .trim()
+    .toUpperCase();
+}
+
+function hashDashboardCode(code) {
+  return crypto
+    .createHash('sha256')
+    .update(
+      normalizeDashboardCode(code)
+    )
+    .digest('hex');
+}
+
+function generateDashboardCode() {
+  const alphabet =
+    'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  const random =
+    crypto.randomBytes(12);
+
+  let raw = '';
+
+  for (
+    let i = 0;
+    i < 12;
+    i++
+  ) {
+    raw +=
+      alphabet[
+        random[i] %
+          alphabet.length
+      ];
+  }
+
+  return (
+    `RD4X-${raw.slice(0, 4)}-` +
+    `${raw.slice(4, 8)}-${raw.slice(8, 12)}`
+  );
+}
+
+function cleanupDashboardCodes() {
+  const agora =
+    Date.now();
+
+  for (
+    const [
+      hash,
+      data
+    ] of Object.entries(
+      db.dashboardCodes || {}
+    )
+  ) {
+    if (
+      !data ||
+      data.expiresAt <= agora ||
+      data.used
+    ) {
+      delete db.dashboardCodes[
+        hash
+      ];
+    }
+  }
+}
+
+function createDashboardCode(
+  discordId
+) {
+  cleanupDashboardCodes();
+
+  const code =
+    generateDashboardCode();
+
+  const hash =
+    hashDashboardCode(
+      code
+    );
+
+  db.dashboardCodes[
+    hash
+  ] = {
+    discordId:
+      String(discordId),
+
+    createdAt:
+      Date.now(),
+
+    expiresAt:
+      Date.now() +
+      DASHBOARD_CODE_TTL,
+
+    used:
+      false
+  };
+
+  saveDB();
+
+  return code;
+}
+
+function consumeDashboardCode(
+  discordId,
+  code
+) {
+  cleanupDashboardCodes();
+
+  const normalized =
+    normalizeDashboardCode(
+      code
+    );
+
+  const hash =
+    hashDashboardCode(
+      normalized
+    );
+
+  const data =
+    db.dashboardCodes[
+      hash
+    ];
+
+  if (!data) {
+    return {
+      valid: false,
+      error:
+        'Senha inválida ou expirada.'
+    };
+  }
+
+  if (
+    data.used
+  ) {
+    return {
+      valid: false,
+      error:
+        'Essa senha já foi utilizada.'
+    };
+  }
+
+  if (
+    data.expiresAt <=
+    Date.now()
+  ) {
+    delete db.dashboardCodes[
+      hash
+    ];
+
+    saveDB();
+
+    return {
+      valid: false,
+      error:
+        'Essa senha expirou.'
+    };
+  }
+
+  if (
+    String(
+      data.discordId
+    ) !==
+    String(
+      discordId
+    )
+  ) {
+    return {
+      valid: false,
+      error:
+        'Essa senha pertence a outro administrador.'
+    };
+  }
+
+  data.used =
+    true;
+
+  data.usedAt =
+    Date.now();
+
+  delete db.dashboardCodes[
+    hash
+  ];
+
+  saveDB();
+
+  return {
+    valid: true
+  };
+      }
 
 // ============================================================
 // DISCORD
@@ -737,330 +952,52 @@ function dashboardAuth(req, res, next) {
   next();
 }
 // ============================================================
-// AUTENTICAÇÃO OAUTH2 — DISCORD
+// OAUTH2 DISCORD — EXCHANGE CONTROLADO PELO WORKER
 // ============================================================
 
-const DISCORD_CLIENT_ID =
-  process.env.DISCORD_CLIENT_ID || '';
-
-const DISCORD_CLIENT_SECRET =
-  process.env.DISCORD_CLIENT_SECRET || '';
-
-const DISCORD_OAUTH_REDIRECT_URI =
-  process.env.DISCORD_OAUTH_REDIRECT_URI ||
-  '';
-
-const DASHBOARD_PUBLIC_URL =
-  process.env.DASHBOARD_PUBLIC_URL ||
-  'https://rd4x-dashboard.ronaldoo-sev7n.workers.dev';
-
-// Sessões OAuth mantidas em memória.
-// Depois que o OAuth estiver funcionando, vamos migrar
-// para uma sessão persistente/segura com expiração adequada.
-const dashboardSessions =
-  new Map();
-
-const oauthStates =
-  new Map();
-
-function generateSecureToken(bytes = 32) {
-  return crypto
-    .randomBytes(bytes)
-    .toString('hex');
-}
-
-function createDashboardSession(discordUser) {
-  const token =
-    generateSecureToken(48);
-
-  dashboardSessions.set(
-    token,
-    {
-      discordId:
-        discordUser.id,
-
-      username:
-        discordUser.username,
-
-      globalName:
-        discordUser.global_name ||
-        null,
-
-      avatar:
-        discordUser.avatar ||
-        null,
-
-      createdAt:
-        Date.now(),
-
-      expiresAt:
-        Date.now() +
-        8 * 60 * 60 * 1000
-    }
-  );
-
-  return token;
-}
-
-function getDashboardSession(req) {
-  const authorization =
-    String(
-      req.get('authorization') ||
-      ''
-    ).trim();
-
-  let token = '';
-
-  if (
-    authorization
-      .toLowerCase()
-      .startsWith('bearer ')
-  ) {
-    token =
-      authorization
-        .slice(7)
-        .trim();
-  }
-
-  if (!token) {
-    const cookieHeader =
-      String(
-        req.get('cookie') ||
-        ''
-      );
-
-    const match =
-      cookieHeader.match(
-        /(?:^|;\s*)rd4x_session=([^;]+)/
-      );
-
-    if (match) {
-      token =
-        decodeURIComponent(
-          match[1]
-        );
-    }
-  }
-
-  if (!token) {
-    return null;
-  }
-
-  const session =
-    dashboardSessions.get(
-      token
-    );
-
-  if (!session) {
-    return null;
-  }
-
-  if (
-    Date.now() >
-    session.expiresAt
-  ) {
-    dashboardSessions.delete(
-      token
-    );
-
-    return null;
-  }
-
-  return {
-    token,
-    ...session
-  };
-}
-
-function discordOAuthRequired(
-  req,
-  res,
-  next
-) {
-  const session =
-    getDashboardSession(req);
-
-  if (!session) {
-    return res.status(401).json({
-      success: false,
-      error:
-        'Sessão Discord não autenticada'
-    });
-  }
-
-  req.dashboardSession =
-    session;
-
-  next();
-}
-
-// ------------------------------------------------------------
-// OAUTH — LOGIN
-// ------------------------------------------------------------
-
-app.get(
-  '/api/auth/discord/login',
-  (req, res) => {
-    try {
-      if (
-        !DISCORD_CLIENT_ID ||
-        !DISCORD_CLIENT_SECRET ||
-        !DISCORD_OAUTH_REDIRECT_URI
-      ) {
-        console.error(
-          '[OAUTH] Variáveis OAuth não configuradas.'
-        );
-
-        return res.status(503).json({
-          success: false,
-          error:
-            'OAuth2 do Discord não configurado'
-        });
-      }
-
-      const state =
-        generateSecureToken(32);
-
-      oauthStates.set(
-        state,
-        {
-          createdAt:
-            Date.now()
-        }
-      );
-
-      // Remove estados antigos.
-      for (
-        const [
-          savedState,
-          data
-        ] of oauthStates
-      ) {
-        if (
-          Date.now() -
-            data.createdAt >
-          10 * 60 * 1000
-        ) {
-          oauthStates.delete(
-            savedState
-          );
-        }
-      }
-
-      const params =
-        new URLSearchParams({
-          client_id:
-            DISCORD_CLIENT_ID,
-
-          response_type:
-            'code',
-
-          redirect_uri:
-            DISCORD_OAUTH_REDIRECT_URI,
-
-          scope:
-            'identify guilds',
-
-          state
-        });
-
-      const url =
-        `https://discord.com/oauth2/authorize?${params.toString()}`;
-
-      return res.redirect(
-        url
-      );
-
-    } catch (error) {
-      console.error(
-        '[OAUTH LOGIN]',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        error:
-          'Erro ao iniciar autenticação Discord'
-      });
-    }
-  }
-);
-
-// ------------------------------------------------------------
-// OAUTH — CALLBACK
-// ------------------------------------------------------------
-
-app.get(
-  '/api/auth/discord/callback',
+app.post(
+  '/api/auth/discord/exchange',
+  dashboardAuth,
   async (req, res) => {
     try {
       const {
         code,
-        state,
-        error
-      } = req.query;
-
-      if (error) {
-        console.warn(
-          '[OAUTH] Usuário cancelou a autorização:',
-          error
-        );
-
-        return res.redirect(
-          `${DASHBOARD_PUBLIC_URL}/#/login?error=discord_cancelado`
-        );
-      }
-
-      if (!code) {
-        return res.status(400).send(
-          'Código OAuth do Discord ausente.'
-        );
-      }
-
-      if (!state) {
-        return res.status(400).send(
-          'Estado OAuth ausente.'
-        );
-      }
-
-      const stateData =
-        oauthStates.get(
-          state
-        );
-
-      if (!stateData) {
-        return res.status(400).send(
-          'Estado OAuth inválido ou expirado.'
-        );
-      }
-
-      oauthStates.delete(
-        state
-      );
-
-      if (
-        Date.now() -
-          stateData.createdAt >
-        10 * 60 * 1000
-      ) {
-        return res.status(400).send(
-          'Sessão OAuth expirada. Tente novamente.'
-        );
-      }
+        redirectUri
+      } = req.body || {};
 
       if (
         !DISCORD_CLIENT_ID ||
-        !DISCORD_CLIENT_SECRET ||
-        !DISCORD_OAUTH_REDIRECT_URI
+        !DISCORD_CLIENT_SECRET
       ) {
-        return res.status(503).send(
-          'OAuth2 do Discord não configurado no servidor.'
-        );
+        return res.status(503).json({
+          success: false,
+          error:
+            'OAuth2 do Discord não configurado no bot.'
+        });
       }
 
-      // ------------------------------------------------------
-      // Troca o code pelo access token
-      // ------------------------------------------------------
+      if (
+        !code ||
+        !redirectUri
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Código OAuth ou redirectUri ausente.'
+        });
+      }
+
+      if (
+        DISCORD_OAUTH_REDIRECT_URI &&
+        redirectUri !==
+          DISCORD_OAUTH_REDIRECT_URI
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Redirect URI inválido.'
+        });
+      }
 
       const tokenResponse =
         await fetch(
@@ -1089,7 +1026,7 @@ app.get(
                   String(code),
 
                 redirect_uri:
-                  DISCORD_OAUTH_REDIRECT_URI
+                  redirectUri
               }).toString()
           }
         );
@@ -1105,7 +1042,8 @@ app.get(
             tokenText
           );
       } catch {
-        tokenData = null;
+        tokenData =
+          null;
       }
 
       if (
@@ -1113,18 +1051,16 @@ app.get(
         !tokenData?.access_token
       ) {
         console.error(
-          '[OAUTH TOKEN] Discord recusou o código:',
+          '[OAUTH] Discord rejeitou o token:',
           tokenResponse.status
         );
 
-        return res.redirect(
-          `${DASHBOARD_PUBLIC_URL}/#/login?error=oauth_token`
-        );
+        return res.status(401).json({
+          success: false,
+          error:
+            'OAuth2 do Discord recusado.'
+        });
       }
-
-      // ------------------------------------------------------
-      // Busca identidade do usuário
-      // ------------------------------------------------------
 
       const userResponse =
         await fetch(
@@ -1144,32 +1080,23 @@ app.get(
         !userResponse.ok ||
         !userData?.id
       ) {
-        console.error(
-          '[OAUTH USER] Não foi possível identificar o usuário:',
-          userResponse.status
-        );
-
-        return res.redirect(
-          `${DASHBOARD_PUBLIC_URL}/#/login?error=discord_user`
-        );
+        return res.status(401).json({
+          success: false,
+          error:
+            'Não foi possível identificar o usuário Discord.'
+        });
       }
-
-      // ------------------------------------------------------
-      // Verifica o servidor Discord
-      // ------------------------------------------------------
 
       const guild =
         await getGuild();
 
       if (!guild) {
-        return res.redirect(
-          `${DASHBOARD_PUBLIC_URL}/#/login?error=guild_not_found`
-        );
+        return res.status(404).json({
+          success: false,
+          error:
+            'Servidor Discord não encontrado.'
+        });
       }
-
-      // ------------------------------------------------------
-      // Busca o membro no servidor
-      // ------------------------------------------------------
 
       const member =
         await guild.members
@@ -1192,14 +1119,12 @@ app.get(
           }
         );
 
-        return res.redirect(
-          `${DASHBOARD_PUBLIC_URL}/#/login?error=not_in_server`
-        );
+        return res.status(403).json({
+          success: false,
+          error:
+            'Você não está no servidor RD4X.'
+        });
       }
-
-      // ------------------------------------------------------
-      // Verifica Dono / Administrador
-      // ------------------------------------------------------
 
       const admin =
         isAdmin(
@@ -1219,18 +1144,16 @@ app.get(
           }
         );
 
-        return res.redirect(
-          `${DASHBOARD_PUBLIC_URL}/#/login?error=not_admin`
-        );
+        return res.status(403).json({
+          success: false,
+          error:
+            'Você não possui o cargo administrativo do RD4X.'
+        });
       }
 
-      // ------------------------------------------------------
-      // Cria sessão autenticada
-      // ------------------------------------------------------
-
-      const sessionToken =
-        createDashboardSession(
-          userData
+      const owner =
+        isOwner(
+          userData.id
         );
 
       audit(
@@ -1240,114 +1163,28 @@ app.get(
         userData.id,
         {
           role:
-            isOwner(
-              userData.id
-            )
+            owner
               ? 'Dono'
               : 'Administrador'
         }
       );
-
-      // Cookie HttpOnly.
-      // O JavaScript do site não consegue ler o token.
-      res.setHeader(
-        'Set-Cookie',
-        [
-          `rd4x_session=${encodeURIComponent(sessionToken)}`,
-          'HttpOnly',
-          'Secure',
-          'SameSite=Lax',
-          'Path=/',
-          'Max-Age=28800'
-        ].join('; ')
-      );
-
-      return res.redirect(
-        `${DASHBOARD_PUBLIC_URL}/#/dashboard`
-      );
-
-    } catch (error) {
-      console.error(
-        '[OAUTH CALLBACK]',
-        error
-      );
-
-      return res.redirect(
-        `${DASHBOARD_PUBLIC_URL}/#/login?error=oauth_error`
-      );
-    }
-  }
-);
-
-// ------------------------------------------------------------
-// OAUTH — USUÁRIO AUTENTICADO
-// ------------------------------------------------------------
-
-app.get(
-  '/api/auth/discord/me',
-  discordOAuthRequired,
-  async (req, res) => {
-    try {
-      const session =
-        req.dashboardSession;
-
-      const guild =
-        await getGuild();
-
-      if (!guild) {
-        return res.status(404).json({
-          success: false,
-          error:
-            'Servidor Discord não encontrado'
-        });
-      }
-
-      const member =
-        await guild.members
-          .fetch(
-            session.discordId
-          )
-          .catch(
-            () => null
-          );
-
-      if (!member) {
-        return res.status(403).json({
-          success: false,
-          error:
-            'Usuário não está mais no servidor'
-        });
-      }
-
-      const admin =
-        isAdmin(
-          member,
-          session.discordId
-        );
-
-      if (!admin) {
-        return res.status(403).json({
-          success: false,
-          error:
-            'Usuário não possui permissão administrativa'
-        });
-      }
 
       return res.json({
         success: true,
 
         data: {
           id:
-            session.discordId,
+            userData.id,
 
           discordId:
-            session.discordId,
+            userData.id,
 
           username:
-            session.username,
+            userData.username,
 
           globalName:
-            session.globalName,
+            userData.global_name ||
+            null,
 
           avatar:
             member.user.displayAvatarURL({
@@ -1355,16 +1192,12 @@ app.get(
             }),
 
           role:
-            isOwner(
-              session.discordId
-            )
+            owner
               ? 'Dono'
               : 'Administrador',
 
           isOwner:
-            isOwner(
-              session.discordId
-            ),
+            owner,
 
           isAdmin:
             true
@@ -1373,64 +1206,138 @@ app.get(
 
     } catch (error) {
       console.error(
-        '[OAUTH ME]',
+        '[OAUTH EXCHANGE]',
         error
       );
 
       return res.status(500).json({
         success: false,
         error:
-          'Erro ao verificar sessão Discord'
+          'Erro interno na autenticação Discord.'
       });
     }
   }
 );
-
-// ------------------------------------------------------------
-// OAUTH — LOGOUT
-// ------------------------------------------------------------
+// ============================================================
+// DASHBOARD — VALIDAR SENHA DE USO ÚNICO
+// ============================================================
 
 app.post(
-  '/api/auth/discord/logout',
-  (req, res) => {
+  '/api/auth/discord/verify-code',
+  dashboardAuth,
+  async (req, res) => {
     try {
-      const session =
-        getDashboardSession(
-          req
-        );
+      const discordId =
+        String(
+          req.headers[
+            'x-dashboard-user-id'
+          ] || ''
+        ).trim();
 
-      if (session?.token) {
-        dashboardSessions.delete(
-          session.token
-        );
+      const code =
+        req.body?.code;
+
+      if (!discordId) {
+        return res.status(401).json({
+          success: false,
+          error:
+            'Usuário do Dashboard não identificado.'
+        });
       }
 
-      res.setHeader(
-        'Set-Cookie',
-        [
-          'rd4x_session=',
-          'HttpOnly',
-          'Secure',
-          'SameSite=Lax',
-          'Path=/',
-          'Max-Age=0'
-        ].join('; ')
+      if (!code) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Senha ausente.'
+        });
+      }
+
+      const guild =
+        await getGuild();
+
+      if (!guild) {
+        return res.status(404).json({
+          success: false,
+          error:
+            'Servidor Discord não encontrado.'
+        });
+      }
+
+      const member =
+        await guild.members
+          .fetch(
+            discordId
+          )
+          .catch(
+            () => null
+          );
+
+      if (
+        !member ||
+        !isAdmin(
+          member,
+          discordId
+        )
+      ) {
+        return res.status(403).json({
+          success: false,
+          error:
+            'Administrador não autorizado.'
+        });
+      }
+
+      const result =
+        consumeDashboardCode(
+          discordId,
+          code
+        );
+
+      if (!result.valid) {
+        audit(
+          discordId,
+          'dashboard_code_failed',
+          discordId,
+          {
+            reason:
+              result.error
+          }
+        );
+
+        return res.status(401).json({
+          success: false,
+          error:
+            result.error
+        });
+      }
+
+      audit(
+        discordId,
+        'dashboard_code_verified',
+        discordId
       );
 
       return res.json({
-        success: true
+        success: true,
+
+        data: {
+          verified:
+            true,
+
+          discordId
+        }
       });
 
     } catch (error) {
       console.error(
-        '[OAUTH LOGOUT]',
+        '[DASHBOARD CODE]',
         error
       );
 
       return res.status(500).json({
         success: false,
         error:
-          'Erro ao sair'
+          'Erro ao validar senha.'
       });
     }
   }
@@ -2560,15 +2467,14 @@ console.log(
 
 client =
 new Client({
-intents: [
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.MessageContent,
-GatewayIntentBits.GuildMembers,
-GatewayIntentBits.GuildPresences
-]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences
+  ]
 });
-
 // ============================================================
 // READY
 // ============================================================
@@ -2577,14 +2483,59 @@ client.once(
 'ready',
 () => {
 console.log(
-"[SUCESSO] Bot online como ${client.user.tag}!"
+  `[SUCESSO] Bot online como ${client.user.tag}!`
 );
-
 console.log(
   `[DISCORD] Servidores conectados: ${client.guilds.cache.size}`
 );
 
 let i = 0;
+
+// ========================================================
+// SLASH COMMAND — SENHA DO DASHBOARD
+// ========================================================
+
+try {
+  const rest =
+    new REST({
+      version: '10'
+    }).setToken(
+      process.env.DISCORD_TOKEN
+    );
+
+  const command =
+    new SlashCommandBuilder()
+      .setName(
+        'dashboard-senha'
+      )
+      .setDescription(
+        'Gera uma senha temporária para acessar o RD4X Dashboard.'
+      );
+
+  if (GUILD_ID) {
+    await rest.put(
+      Routes.applicationGuildCommands(
+        DISCORD_CLIENT_ID,
+        GUILD_ID
+      ),
+      {
+        body: [
+          command.toJSON()
+        ]
+      }
+    );
+  }
+
+  console.log(
+    '[DASHBOARD] Slash command /dashboard-senha registrado.'
+  );
+
+} catch (error) {
+  console.error(
+    '[DASHBOARD] Erro ao registrar /dashboard-senha:',
+    error
+  );
+} 
 
 setInterval(
   () => {
@@ -4283,6 +4234,63 @@ if (
 
 client.on(
 'interactionCreate',
+if (
+  interaction.isChatInputCommand() &&
+  interaction.commandName ===
+    'dashboard-senha'
+) {
+  if (
+    interaction.channelId !==
+    ID_CANAL_SENHA_DASHBOARD
+  ) {
+    return interaction.reply({
+      content:
+        '❌ Este comando só pode ser usado no canal oficial de autenticação do Dashboard.',
+
+      ephemeral: true
+    });
+  }
+
+  const member =
+    interaction.member;
+
+  const admin =
+    isAdmin(
+      member,
+      interaction.user.id
+    );
+
+  if (!admin) {
+    return interaction.reply({
+      content:
+        '❌ Apenas administradores do RD4X podem gerar uma senha do Dashboard.',
+
+      ephemeral: true
+    });
+  }
+
+  const code =
+    createDashboardCode(
+      interaction.user.id
+    );
+
+  audit(
+    interaction.user.tag,
+    'dashboard_code_generated',
+    interaction.user.id
+  );
+
+  return interaction.reply({
+    content:
+      `🔐 **Senha temporária do RD4X Dashboard**\n\n` +
+      `\`${code}\`\n\n` +
+      `⏱️ Esta senha expira em **5 minutos**.\n` +
+      `♻️ Ela só pode ser utilizada **uma vez**.\n\n` +
+      `⚠️ **Só você pode ver esta mensagem.**`,
+
+    ephemeral: true
+  });
+}
 async interaction => {
 if (
 !interaction.isButton()
