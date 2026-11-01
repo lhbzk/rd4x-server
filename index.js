@@ -936,6 +936,229 @@ res.json({
 );
 
 // ============================================================
+// KEY DE PRODUTO — VALIDAÇÃO
+// ============================================================
+//
+// Fluxo em 2 fases:
+//
+// FASE 1 (resgate): Key só pode ser resgatada dentro de
+// 5 minutos após ser gerada. Primeira validação OK define
+// redeemedAt e sessionExpiresAt (+2h).
+//
+// FASE 2 (sessão): depois do resgate, expiresAt é ignorado.
+// Só vale sessionExpiresAt. Cada nova validação NÃO renova
+// o prazo — as 2h são fixas a partir do resgate.
+//
+// REGRAS DE SEGURANÇA:
+// 1. A Key só pode ser resgatada pela MESMA pessoa que
+//    gerou (discordId enviado pelo Worker/site).
+// 2. Cada Key só é resgatada UMA vez (redeemedAt).
+// 3. HWID (opcional) trava a Key ao primeiro dispositivo.
+// 4. Sem histórico: a Key é deletada ao expirar.
+// ============================================================
+
+app.post(
+  '/api/v2/keys/validate',
+  dashboardAuth,
+  (req, res) => {
+    try {
+      const {
+        key,
+        hwid,
+        discordId
+      } = req.body || {};
+
+      if (!key) {
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'key_ausente'
+        });
+      }
+
+      if (!discordId) {
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'discordid_ausente'
+        });
+      }
+
+      const keyHash =
+        hashProductKey(key);
+
+      if (
+        !db.productKeys ||
+        typeof db.productKeys !== 'object'
+      ) {
+        db.productKeys = {};
+      }
+
+      const dados =
+        db.productKeys[keyHash];
+
+      if (!dados) {
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'key_invalida'
+        });
+      }
+
+      if (
+        String(dados.discordId) !==
+        String(discordId)
+      ) {
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'key_de_outro_usuario'
+        });
+      }
+
+      if (dados.status !== 'active') {
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'key_inativa'
+        });
+      }
+
+      const agora =
+        Date.now();
+
+      const hwidCliente =
+        hwid
+          ? String(hwid)
+          : null;
+
+      // --------------------------------------------------
+      // FASE 1 — Key ainda não foi resgatada.
+      // Só pode ser resgatada dentro de 5 minutos.
+      // --------------------------------------------------
+
+      if (!dados.redeemedAt) {
+        if (
+          dados.expiresAt &&
+          dados.expiresAt !== 'perm' &&
+          Number(dados.expiresAt) < agora
+        ) {
+          delete db.productKeys[keyHash];
+          saveDB();
+
+          return res.json({
+            success: true,
+            valid: false,
+            reason: 'key_nao_resgatada'
+          });
+        }
+
+        dados.redeemedAt =
+          agora;
+
+        dados.sessionExpiresAt =
+          agora + (2 * 60 * 60 * 1000);
+
+        if (hwidCliente) {
+          dados.hwid =
+            hwidCliente;
+        }
+
+        saveDB();
+
+        return res.json({
+          success: true,
+          valid: true,
+          justRedeemed: true,
+          data: {
+            discordId: dados.discordId,
+            username: dados.username || null,
+            createdAt: dados.createdAt || null,
+            redeemedAt: dados.redeemedAt,
+            sessionExpiresAt: dados.sessionExpiresAt,
+            sessionRemainingSeconds:
+              Math.floor(
+                (dados.sessionExpiresAt - agora) / 1000
+              ),
+            status: dados.status,
+            hwid: dados.hwid || null
+          }
+        });
+      }
+
+      // --------------------------------------------------
+      // FASE 2 — Key já resgatada.
+      // expiresAt é IGNORADO. Só sessionExpiresAt importa.
+      // --------------------------------------------------
+
+      if (
+        dados.sessionExpiresAt &&
+        Number(dados.sessionExpiresAt) < agora
+      ) {
+        delete db.productKeys[keyHash];
+        saveDB();
+
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'sessao_expirada'
+        });
+      }
+
+      if (
+        dados.hwid &&
+        hwidCliente &&
+        dados.hwid !== hwidCliente
+      ) {
+        return res.json({
+          success: true,
+          valid: false,
+          reason: 'hwid_mismatch'
+        });
+      }
+
+      if (
+        !dados.hwid &&
+        hwidCliente
+      ) {
+        dados.hwid = hwidCliente;
+        saveDB();
+      }
+
+      return res.json({
+        success: true,
+        valid: true,
+        justRedeemed: false,
+        data: {
+          discordId: dados.discordId,
+          username: dados.username || null,
+          createdAt: dados.createdAt || null,
+          redeemedAt: dados.redeemedAt,
+          sessionExpiresAt: dados.sessionExpiresAt,
+          sessionRemainingSeconds:
+            Math.floor(
+              (dados.sessionExpiresAt - agora) / 1000
+            ),
+          status: dados.status,
+          hwid: dados.hwid || null
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        '[KEY VALIDATE]',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        valid: false,
+        reason: 'erro_interno'
+      });
+    }
+  }
+);
+// ============================================================
 // AUTENTICAÇÃO DASHBOARD
 // ============================================================
 
