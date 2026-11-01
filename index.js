@@ -4791,7 +4791,7 @@ if (
 
 }
 );
-
+client.on('interactionCreate', async interaction => {
 // ============================================================
 // INTERAÇÕES
 // ============================================================
@@ -4854,58 +4854,7 @@ if (
     });
   }
 }
-// ========================================================
-// SLASH COMMAND — SENHA DO DASHBOARD
-// ========================================================
 
-try {
-  const rest =
-    new REST({
-      version: '10'
-    }).setToken(
-      process.env.DISCORD_TOKEN
-    );
-
-  const command =
-    new SlashCommandBuilder()
-      .setName(
-        'dashboard-senha'
-      )
-      .setDescription(
-        'Gera uma senha temporária para acessar o RD4X Dashboard.'
-      );
-
-  if (GUILD_ID) {
-    await rest.put(
-      Routes.applicationGuildCommands(
-        DISCORD_CLIENT_ID,
-        GUILD_ID
-      ),
-      {
-        body: [
-          command.toJSON()
-        ]
-      }
-    );
-  }
-
-  console.log(
-    '[DASHBOARD] Slash command /dashboard-senha registrado.'
-  );
-
-} catch (error) {
-  console.error(
-    '[DASHBOARD] Erro ao registrar /dashboard-senha:',
-    error
-  );
-}
-      return;
-    }
-
-    if (!interaction.isButton()) {
-      return;
-    }
-    
 // ==================================================
 // BOTÃO — GERAR SENHA
 // ==================================================
