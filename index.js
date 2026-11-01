@@ -4801,33 +4801,30 @@ if (
 ) {
   try {
 
-    const resultado =
-      createDashboardCode(
-        interaction.user.id
-      );
+    const code =
+  createDashboardCode(
+    interaction.user.id
+  );
 
-    if (
-      !resultado ||
-      !resultado.code
-    ) {
-      return interaction.reply({
-        content:
-          '❌ Não foi possível gerar a senha do Dashboard.',
-        ephemeral: true
-      });
-    }
+if (!code) {
+  return interaction.reply({
+    content:
+      '❌ Não foi possível gerar a senha do Dashboard.',
+    ephemeral: true
+  });
+}
 
-    return interaction.reply({
-      content:
-        [
-          '🔐 **Senha do Dashboard gerada!**',
-          '',
-          `\`${resultado.code}\``,
-          '',
-          '⚠️ Não compartilhe essa senha.'
-        ].join('\n'),
-      ephemeral: true
-    });
+return interaction.reply({
+  content:
+    [
+      '🔐 **Senha do Dashboard gerada!**',
+      '',
+      `\`${code}\``,
+      '',
+      '⚠️ Não compartilhe essa senha.'
+    ].join('\n'),
+  ephemeral: true
+});
 
   } catch (error) {
 
