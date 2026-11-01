@@ -128,13 +128,15 @@ const DASHBOARD_CODE_TTL =
 // ============================================================
 
 const DEFAULT_DB = {
-version: 2,
+version: 3,
 
 totalExecucoesGlobais: 0,
 
 historicoVendas: [],
 
 usuariosLiberados: {},
+
+keys: {}, // Banco de Keys geradas via Discord Botão
 
 blacklist: [],
 
@@ -261,6 +263,13 @@ db.usuariosLiberados || {}
 )
 );
 
+const keysAtivas =
+new Map(
+Object.entries(
+db.keys || {}
+)
+);
+
 const historicoVendas =
 db.historicoVendas || [];
 
@@ -296,6 +305,11 @@ Object.fromEntries(
 usuariosLiberados
 );
 
+db.keys =
+Object.fromEntries(
+keysAtivas
+);
+
 db.tickets =
 Object.fromEntries(
 ticketsAtivos
@@ -313,6 +327,29 @@ db.totalExecucoesGlobais =
 totalExecucoesGlobais;
 
 saveDB();
+}
+
+// ============================================================
+// GERADOR SEGURO DE KEYS
+// ============================================================
+
+function gerarChaveRD4X() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const getPart = () => {
+    let res = '';
+    const bytes = crypto.randomBytes(4);
+    for (let i = 0; i < 4; i++) {
+      res += alphabet[bytes[i] % alphabet.length];
+    }
+    return res;
+  };
+
+  let chave = '';
+  do {
+    chave = `RD4X-${getPart()}-${getPart()}-${getPart()}`;
+  } while (keysAtivas.has(chave));
+
+  return chave;
 }
 
 // ============================================================
@@ -674,9 +711,9 @@ const embedHWID =
     )
     .setDescription(
       `Tentativa de uso em outro aparelho detectada!\n\n` +
-      `**Nick:** \`${nick}\`\n` +
-      `**HWID Registrado:** \`${hwidRegistrado}\`\n` +
-      `**HWID Tentativa:** \`${hwidTentativa}\``
+      `**Nick:** \\`${nick}\\`\n` +
+      `**HWID Registrado:** \\`${hwidRegistrado}\\`\n` +
+      `**HWID Tentativa:** \\`${hwidTentativa}\\``
     )
     .setColor(0xff0000)
     .setTimestamp();
@@ -863,8 +900,8 @@ if (
           '🎮 RD4X Hub — Executado no Roblox'
         )
         .setDescription(
-          `**Jogador:** \`${nick || 'Desconhecido'}\`\n` +
-          `**Jogo:** \`${jogo || 'Blox Fruits / Geral'}\`\n` +
+          `**Jogador:** \\`${nick || 'Desconhecido'}\\`\n` +
+          `**Jogo:** \\`${jogo || 'Blox Fruits / Geral'}\\`\n` +
           `**Status:** ✅ Acesso Validado`
         )
         .setColor(0x00ff88)
@@ -2444,6 +2481,26 @@ data: []
 );
 
 // ============================================================
+// DASHBOARD — KEYS (NOVO ENDPOINT)
+// ============================================================
+
+app.get(
+'/api/dashboard/keys',
+dashboardAuth,
+(req, res) => {
+  try {
+    const data = [...keysAtivas.entries()].map(([key, info]) => ({
+      key,
+      ...info
+    }));
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Erro ao buscar keys' });
+  }
+}
+);
+
+// ============================================================
 // SERVIDOR WEB
 // ============================================================
 
@@ -2452,7 +2509,7 @@ port,
 '0.0.0.0',
 () => {
 console.log(
-"[WEB] RD4X API rodando na porta ${port}"
+`[WEB] RD4X API rodando na porta ${port}`
 );
 }
 );
@@ -2765,7 +2822,7 @@ status: 'open'
 };
 
 dados.logs.push(
-"• [<t:${Math.floor(Date.now() / 1000)}:R>] ${novoEvento}"
+`• [<t:${Math.floor(Date.now() / 1000)}:R>] ${novoEvento}`
 );
 
 dados.ultimoContato =
@@ -2794,13 +2851,13 @@ return;
 const embed =
 new EmbedBuilder()
 .setTitle(
-"🎫 Atendimento — ${tituloGeral}"
+`🎫 Atendimento — ${tituloGeral}`
 )
 .setColor(cor)
 .setDescription(
-"**Usuário:** ${usuario}\n\n" +
-"**Histórico:**\n" +
-"${dados.logs .slice(-20) .join('\n')}"
+`**Usuário:** ${usuario}\n\n` +
+`**Histórico:**\n` +
+`${dados.logs.slice(-20).join('\n')}`
 )
 .setFooter({
 text:
@@ -2963,6 +3020,28 @@ const admin =
   );
 
 // ========================================================
+// COMANDO !GERAR (CANAL ESPECÍFICO)
+// ========================================================
+
+if (
+  comando === '!gerar' &&
+  (message.channel.id === ID_CANAL_SENHA_DASHBOARD || message.channel.id === '1566184054670360617')
+) {
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('rd4x_gerar_key')
+      .setLabel('Gerar Key')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('🔑')
+  );
+
+  return message.channel.send({
+    content: '🔑 **Sistema de Geração RD4X**\n\nClique no botão abaixo para receber sua Key privada e exclusiva.',
+    components: [row]
+  });
+}
+
+// ========================================================
 // ADMIN HELP
 // ========================================================
 
@@ -2989,7 +3068,7 @@ if (
           name:
             '🎫 Tickets',
           value:
-            '`!painel` • `!fechar` • `!suporte` • `!assumir`'
+            '`!painel` • `!fechar` • `!suporte` • `!assumir` • `!gerar`'
         },
 
         {
@@ -4290,6 +4369,50 @@ try {
 
     if (!interaction.isButton()) {
       return;
+    }
+
+    // INTERAÇÃO DO BOTÃO GERAR KEY
+    if (interaction.customId === 'rd4x_gerar_key') {
+      const userId = interaction.user.id;
+      const username = interaction.user.username;
+
+      // Verifica se o usuário já possui key ativa
+      let keyExistente = null;
+      for (const [k, info] of keysAtivas.entries()) {
+        if (info.discordId === userId && info.status === 'active') {
+          keyExistente = k;
+          break;
+        }
+      }
+
+      if (keyExistente) {
+        return interaction.reply({
+          content: `⚠️ Você já possui uma Key ativa vinculada à sua conta:\n\`\`\`${keyExistente}\`\`\``,
+          ephemeral: true
+        });
+      }
+
+      const novaChave = gerarChaveRD4X();
+      const createdAt = new Date().toISOString();
+      const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000);
+
+      keysAtivas.set(novaChave, {
+        discordId: userId,
+        username: username,
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+        status: 'active',
+        hwid: 'LIVRE'
+      });
+
+      syncDB();
+
+      audit(username, 'generate_key_discord', novaChave);
+
+      return interaction.reply({
+        content: `🔑 **Key gerada com sucesso!**\nAqui está a sua chave de acesso exclusiva:\n\`\`\`${novaChave}\`\`\`\nGuarde-a com segurança. Ela não será exibida publicamente.`,
+        ephemeral: true
+      });
     }
 
     if (
