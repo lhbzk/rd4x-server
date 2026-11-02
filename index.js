@@ -1465,6 +1465,105 @@ function dashboardAuth(req, res, next) {
   next();
 }
 // ============================================================
+// DASHBOARD — LISTAR TODOS OS CANAIS DO SERVIDOR
+// ============================================================
+
+app.get(
+  '/api/dashboard/discord/channels',
+  dashboardAuth,
+  async (req, res) => {
+    try {
+      const guild = await getGuild();
+
+      if (!guild) {
+        return res.status(404).json({
+          ok: false,
+          error: 'Servidor do Discord não encontrado.'
+        });
+      }
+
+      const channels = await guild.channels.fetch();
+
+      const result = [...channels.values()]
+        .filter(Boolean)
+        .map((channel) => {
+          let type = 'unknown';
+
+          if (channel.type === ChannelType.GuildText) {
+            type = 'text';
+          } else if (
+            channel.type === ChannelType.GuildAnnouncement
+          ) {
+            type = 'announcement';
+          } else if (
+            channel.type === ChannelType.GuildForum
+          ) {
+            type = 'forum';
+          } else if (
+            channel.type === ChannelType.GuildCategory
+          ) {
+            type = 'category';
+          } else if (
+            channel.type === ChannelType.GuildVoice
+          ) {
+            type = 'voice';
+          } else if (
+            channel.type === ChannelType.GuildStageVoice
+          ) {
+            type = 'stage';
+          }
+
+          return {
+            id: channel.id,
+            name: channel.name,
+            type,
+            category: channel.parent?.name || null,
+            categoryId: channel.parentId || null,
+            canSendMessages:
+              typeof channel.isTextBased === 'function'
+                ? channel.isTextBased()
+                : false
+          };
+        })
+        .sort((a, b) => {
+          if (a.type === 'category' && b.type !== 'category') {
+            return -1;
+          }
+
+          if (a.type !== 'category' && b.type === 'category') {
+            return 1;
+          }
+
+          return a.name.localeCompare(
+            b.name,
+            'pt-BR',
+            { sensitivity: 'base' }
+          );
+        });
+
+      return res.json({
+        ok: true,
+        guild: {
+          id: guild.id,
+          name: guild.name
+        },
+        channels: result
+      });
+
+    } catch (error) {
+      console.error(
+        '[DASHBOARD] Erro ao listar canais do Discord:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error: 'Não foi possível carregar os canais do servidor.'
+      });
+    }
+  }
+);
+// ============================================================
 // OAUTH2 DISCORD — EXCHANGE CONTROLADO PELO WORKER
 // ============================================================
 
