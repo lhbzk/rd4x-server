@@ -4950,155 +4950,229 @@ return interaction.reply({
     });
   }
 }
-
-// ==================================================
-// BOTÃO — GERAR SENHA
-// ==================================================
+// ============================================================
+// GERAR PRODUCT KEY — DASHBOARD
+// ============================================================
 
 if (
+  interaction.isButton() &&
   interaction.customId ===
-  'rd4x_gerar_senha'
+    'rd4x_gerar_senha'
 ) {
   try {
-    await interaction.deferReply({
-      ephemeral: true
-    });
+    const discordId =
+      String(
+        interaction.user.id
+      );
 
+    const username =
+      interaction.user.globalName ||
+      interaction.user.username ||
+      null;
+
+    /*
+     * Garante que exista o objeto
+     * de Product Keys.
+     */
     if (
       !db.productKeys ||
-      typeof db.productKeys !== 'object'
+      typeof db.productKeys !==
+        'object'
     ) {
       db.productKeys = {};
     }
 
-    const discordId =
-      interaction.user.id;
-
-    const username =
-      interaction.user.username;
+    /*
+     * Gera a Key e verifica colisão
+     * antes de registrar.
+     */
+    let productKey = null;
+    let productKeyHash = null;
 
     for (
-      const [
-        hashExistente,
-        dadosExistentes
-      ] of Object.entries(
-        db.productKeys
-      )
+      let attempt = 0;
+      attempt < 10;
+      attempt++
     ) {
+      const candidate =
+        generateProductKey();
+
+      const candidateHash =
+        hashProductKey(
+          candidate
+        );
+
       if (
-        dadosExistentes &&
-        dadosExistentes.discordId ===
-          discordId
+        !db.productKeys[
+          candidateHash
+        ]
       ) {
-        delete db.productKeys[
-          hashExistente
-        ];
+        productKey =
+          candidate;
+
+        productKeyHash =
+          candidateHash;
+
+        break;
       }
     }
 
-    let productKey =
-      null;
-
-    let productKeyHash =
-      null;
-
-    let tentativas =
-      0;
-
-    do {
-      productKey =
-        generateProductKey();
-
-      productKeyHash =
-        hashProductKey(
-          productKey
-        );
-
-      tentativas++;
-    } while (
-      db.productKeys[
-        productKeyHash
-      ] &&
-      tentativas < 10
-    );
-
+    /*
+     * Falha extremamente improvável,
+     * mas não devemos mostrar uma Key
+     * que não foi registrada.
+     */
     if (
       !productKey ||
-      !productKeyHash ||
-      db.productKeys[
-        productKeyHash
-      ]
+      !productKeyHash
     ) {
-      return interaction.editReply({
+      console.error(
+        '[PRODUCT KEY] Não foi possível gerar uma Key única.'
+      );
+
+      return interaction.reply({
         content:
-          '❌ Não foi possível gerar a senha agora. ' +
-          'Tente novamente em alguns instantes.'
+          '❌ Não foi possível gerar sua Key agora. Tente novamente.',
+        ephemeral: true
       });
     }
 
-const agora = Date.now();
+    const agora =
+      Date.now();
 
-db.productKeys[productKeyHash] = {
-  discordId: String(discordId),
-  username: username || null,
+    /*
+     * REGISTRO DA KEY
+     *
+     * A Key exibida ao usuário é
+     * exatamente a Key cujo hash está
+     * armazenado neste registro.
+     */
+    db.productKeys[
+      productKeyHash
+    ] = {
+      discordId:
+        discordId,
 
-  // Momento em que a Key foi criada
-  createdAt: agora,
+      username:
+        username,
 
-  // A Key só pode ser resgatada durante 5 minutos.
-  // Depois de resgatada, esse campo deixa de controlar a sessão.
-  expiresAt:
-    agora + (5 * 60 * 1000),
+      createdAt:
+        agora,
 
-  // Ainda não foi resgatada.
-  redeemedAt: null,
+      redeemedAt:
+        null,
 
-  // Será definido no primeiro resgate:
-  // agora + 2 horas
-  sessionExpiresAt: null,
+      expiresAt:
+        agora +
+        (5 * 60 * 1000),
 
-  status: 'active',
+      sessionExpiresAt:
+        null,
 
-  // Será definido no primeiro resgate,
-  // caso o Worker envie o HWID.
-  hwid: null
-};
+      status:
+        'active',
 
-saveDB();
+      hwid:
+        null
+    };
 
-    return interaction.editReply({
+    /*
+     * Persiste imediatamente.
+     *
+     * Assim, se o usuário copiar a Key
+     * e imediatamente abrir o Dashboard,
+     * ela já estará disponível para
+     * /api/v2/keys/validate.
+     */
+    saveDB(true);
+
+    /*
+     * Confirma internamente que o registro
+     * existe antes de mostrar a Key.
+     */
+    const registered =
+      db.productKeys[
+        productKeyHash
+      ];
+
+    if (
+      !registered ||
+      String(
+        registered.discordId
+      ) !== discordId
+    ) {
+      console.error(
+        '[PRODUCT KEY] Falha ao confirmar registro da Key.'
+      );
+
+      delete db.productKeys[
+        productKeyHash
+      ];
+
+      saveDB(true);
+
+      return interaction.reply({
+        content:
+          '❌ Ocorreu um erro ao registrar sua Key. Tente novamente.',
+        ephemeral: true
+      });
+    }
+
+    /*
+     * Auditoria.
+     *
+     * Não salvamos a Key em texto puro
+     * nos logs/banco de auditoria.
+     */
+    audit(
+      discordId,
+      'product_key_generated',
+      discordId,
+      {
+        username,
+        keyHash:
+          productKeyHash,
+        expiresAt:
+          registered.expiresAt
+      }
+    );
+
+    /*
+     * Mostra a Key ao usuário.
+     *
+     * IMPORTANTE:
+     * esta é a mesma Key registrada acima.
+     */
+    return interaction.reply({
       content:
-        '🔑 **Sua senha RD4X:**\n\n' +
+        `🔑 **Sua RD4X Key foi gerada!**\n\n` +
         `\`${productKey}\`\n\n` +
-        '⚠️ Guarde com cuidado e não compartilhe. ' +
-        'Esta mensagem é privada.'
+        `⏳ Ela expira em **5 minutos** se não for utilizada.\n` +
+        `📋 Copie a Key e cole manualmente no Dashboard.\n\n` +
+        `⚠️ Não compartilhe esta Key com ninguém.`,
+      ephemeral: true
     });
 
   } catch (error) {
     console.error(
-      '[GERAR SENHA]',
+      '[PRODUCT KEY] Erro ao gerar Key:',
       error
     );
 
+    /*
+     * Não exibimos detalhes internos
+     * do erro ao usuário.
+     */
     if (
       !interaction.replied &&
       !interaction.deferred
     ) {
       return interaction.reply({
         content:
-          '❌ Ocorreu um erro ao gerar a senha.',
+          '❌ Não foi possível gerar sua Key agora. Tente novamente.',
         ephemeral: true
-      }).catch(
-        () => {}
-      );
+      });
     }
-
-    return interaction.editReply({
-      content:
-        '❌ Ocorreu um erro ao gerar a senha.'
-    }).catch(
-      () => {}
-    );
   }
 }
 
