@@ -4960,6 +4960,16 @@ if (
     'rd4x_gerar_senha'
 ) {
   try {
+    /*
+     * Responde imediatamente. O Discord dá apenas 3 segundos
+     * para responder uma interação; o trabalho abaixo (gerar,
+     * registrar e gravar a Key) passa disso e causava o erro
+     * 10062, que antes derrubava o bot inteiro.
+     */
+    await interaction.deferReply({
+      ephemeral: true
+    });
+
     const discordId =
       String(
         interaction.user.id
@@ -5030,10 +5040,9 @@ if (
         '[PRODUCT KEY] Não foi possível gerar uma Key única.'
       );
 
-      return interaction.reply({
+      return interaction.editReply({
         content:
-          '❌ Não foi possível gerar sua Key agora. Tente novamente.',
-        ephemeral: true
+          '❌ Não foi possível gerar sua Key agora. Tente novamente.'
       });
     }
 
@@ -5111,10 +5120,9 @@ if (
 
       saveDB(true);
 
-      return interaction.reply({
+      return interaction.editReply({
         content:
-          '❌ Ocorreu um erro ao registrar sua Key. Tente novamente.',
-        ephemeral: true
+          '❌ Ocorreu um erro ao registrar sua Key. Tente novamente.'
       });
     }
 
@@ -5143,15 +5151,31 @@ if (
      * IMPORTANTE:
      * esta é a mesma Key registrada acima.
      */
-    return interaction.reply({
-      content:
-        `🔑 **Sua RD4X Key foi gerada!**\n\n` +
-        `\`${productKey}\`\n\n` +
-        `⏳ Ela expira em **5 minutos** se não for utilizada.\n` +
-        `📋 Copie a Key e cole manualmente no Dashboard.\n\n` +
-        `⚠️ Não compartilhe esta Key com ninguém.`,
-      ephemeral: true
-    });
+    try {
+      return await interaction.editReply({
+        content:
+          `🔑 **Sua RD4X Key foi gerada!**\n\n` +
+          `\`${productKey}\`\n\n` +
+          `⏳ Ela expira em **5 minutos** se não for utilizada.\n` +
+          `📋 Copie a Key e cole manualmente no Dashboard.\n\n` +
+          `⚠️ Não compartilhe esta Key com ninguém.`
+      });
+    } catch (replyError) {
+      /*
+       * 10062 = interação expirada: o Discord não aceita
+       * mais responder a este botão. A Key já está
+       * registrada, então só registramos no log.
+       */
+      if (replyError?.code === 10062) {
+        console.error(
+          '[PRODUCT KEY] Interação expirada (10062). A Key já foi registrada.'
+        );
+
+        return null;
+      }
+
+      throw replyError;
+    }
 
   } catch (error) {
     console.error(
@@ -5160,18 +5184,34 @@ if (
     );
 
     /*
+     * Interação expirada ou já respondida: não há como
+     * avisar o usuário por aqui.
+     */
+    if (error?.code === 10062 || error?.code === 40060) {
+      return null;
+    }
+
+    /*
      * Não exibimos detalhes internos
      * do erro ao usuário.
      */
     if (
-      !interaction.replied &&
-      !interaction.deferred
+      interaction.isRepliable()
     ) {
-      return interaction.reply({
-        content:
-          '❌ Não foi possível gerar sua Key agora. Tente novamente.',
-        ephemeral: true
-      });
+      try {
+        return await interaction.editReply({
+          content:
+            '❌ Não foi possível gerar sua Key agora. Tente novamente.',
+          ephemeral: true
+        });
+      } catch (replyError) {
+        console.error(
+          '[PRODUCT KEY] Falha ao avisar o usuário:',
+          replyError?.code || replyError?.message || replyError
+        );
+
+        return null;
+      }
     }
   }
 }
@@ -5452,6 +5492,42 @@ process.exit(0);
 // ============================================================
 // LOGIN
 // ============================================================
+
+// ============================================================
+// ERROS DO CLIENTE
+//
+// Sem um listener de 'error' no Client, qualquer erro vindo
+// do Discord se torna um 'error' event não tratado e derruba
+// o processo inteiro (node:events ... throw er).
+// ============================================================
+
+client.on(
+'error',
+(error) => {
+console.error(
+'[CLIENT ERROR]',
+error?.code ||
+error?.message ||
+error
+);
+}
+);
+
+// ============================================================
+// PROMISES NÃO TRATADAS
+// ============================================================
+
+process.on(
+'unhandledRejection',
+(reason) => {
+console.error(
+'[UNHANDLED REJECTION]',
+reason?.code ||
+reason?.message ||
+reason
+);
+}
+);
 
 client.login(
 process.env.DISCORD_TOKEN
