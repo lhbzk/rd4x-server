@@ -4641,40 +4641,35 @@ if (
 // PAINEL
 // ========================================================
 
-if (
-  comando ===
-  '!painel'
-) {
-  const row =
-    new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(
-            'criar_ticket'
-          )
-          .setLabel(
-            'Criar Ticket'
-          )
-          .setStyle(
-            ButtonStyle.Danger
-          )
-          .setEmoji('🎫')
-      );
-
-  await message
-    .delete()
-    .catch(
-      () => {}
+if (comando === '!painel') {
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle(
+      `${message.guild.name} OFICIAL\nTICKETS`
+    )
+    .setDescription(
+      '>>> **Quer Adquirir Seu Painel Admin?**\n\n' +
+      '>>> **Para começar seu atendimento, Clique no botão abaixo e aguarde a Resposta dos Admins.**\n\n' +
+      '**Clique Aqui ↓**'
+    )
+    .setImage(
+      'https://i.ibb.co/MD37N7Wk/lv-0-20261104110433.jpg'
     );
 
-  return message.channel.send({
-    content:
-      '🎫 **RD4X Hub — Atendimento**\n\n' +
-      'Clique abaixo para abrir um ticket e adquirir/renovar seu Painel.',
+  const row = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('criar_ticket')
+        .setLabel('Ticket')
+        .setEmoji('🎟️')
+        .setStyle(ButtonStyle.Danger)
+    );
 
-    components: [
-      row
-    ]
+  await message.delete().catch(() => {});
+
+  return message.channel.send({
+    embeds: [embed],
+    components: [row]
   });
 }
 
