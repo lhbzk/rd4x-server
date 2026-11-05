@@ -93,6 +93,9 @@ const ID_CANAL_LOGS =
 process.env.ID_CANAL_LOGS ||
 '1549274555175018587';
 
+const ID_CANAL_LOGS_ARCLO =
+  '1567550201789546639';
+
 const ID_CANAL_AVALIACOES =
 process.env.ID_CANAL_AVALIACOES ||
 '1549458044331757660';
@@ -3321,7 +3324,7 @@ setInterval(
         dados.ultimoContato &&
         agora -
           dados.ultimoContato >=
-          86400000 &&
+          57600000 &&
         !dados.avisoInatividade
       ) {
         dados.avisoInatividade =
@@ -3335,7 +3338,7 @@ setInterval(
         if (canal) {
           await canal
             .send(
-              '⏱️ **Aviso de Inatividade:** este ticket está sem respostas há 24 horas e poderá ser encerrado em breve.'
+              '⏱️ **Aviso de Inatividade:** este ticket está sem respostas há 16 horas e poderá ser encerrado em breve.'
             )
             .catch(
               () => {}
@@ -3377,7 +3380,7 @@ status: 'open'
 };
 
 dados.logs.push(
-"• [<t:${Math.floor(Date.now() / 1000)}:R>] ${novoEvento}"
+`• [<t:${Math.floor(Date.now() / 1000)}:R>] ${novoEvento}`
 );
 
 dados.ultimoContato =
@@ -3406,13 +3409,13 @@ return;
 const embed =
 new EmbedBuilder()
 .setTitle(
-"🎫 Atendimento — ${tituloGeral}"
+`🎫 Atendimento — ${tituloGeral}`
 )
 .setColor(cor)
 .setDescription(
-"**Usuário:** ${usuario}\n\n" +
-"**Histórico:**\n" +
-"${dados.logs .slice(-20) .join('\n')}"
+`**Usuário:** ${usuario}\n\n` +
+`**Histórico:**\n` +
+`${dados.logs .slice(-20) .join('\n')}`
 )
 .setFooter({
 text:
@@ -3501,12 +3504,351 @@ userId,
 client.on(
 'messageCreate',
 async message => {
+
+// ========================================================
+// INTEGRAÇÃO DE TICKETS — ARCLO
+// ========================================================
+
+// O Arclo também é um bot.
+// Por isso, esta verificação precisa acontecer
+// ANTES do bloqueio de mensagens de outros bots.
+
 if (
-message.author.bot
+  message.author.bot &&
+  message.channel.id === ID_CANAL_LOGS_ARCLO
 ) {
-return;
+  try {
+
+    // Reúne o conteúdo da mensagem e dos embeds.
+    const conteudo = [
+      message.content || '',
+      ...message.embeds.map(embed => [
+        embed.title || '',
+        embed.description || '',
+        ...(embed.fields || []).map(field => field.value || '')
+      ].join('\n'))
+    ].join('\n');
+
+    // Só processa mensagens identificadas pelo Arclo.
+    if (
+      !conteudo.includes('[RD4X_TICKET_CREATE]') ||
+      !conteudo.includes('[END_RD4X_TICKET_CREATE]') ||
+      !conteudo.includes('ACTION: CREATE_TICKET') ||
+      !conteudo.includes('SOURCE: ARCLO')
+    ) {
+      return;
+    }
+
+    // Extrai os dados enviados pelo Arclo.
+    const obterCampo = nome => {
+      const resultado = conteudo.match(
+        new RegExp(
+          '^\\s*' + nome + '\\s*:\\s*(.*?)\\s*$',
+          'im'
+        )
+      );
+
+      return resultado
+        ? resultado[1].trim()
+        : '';
+    };
+
+    const userId =
+      obterCampo('USER_ID');
+
+    const username =
+      obterCampo('USERNAME');
+
+    const sourceChannelId =
+      obterCampo('CHANNEL_ID');
+
+    // Validação dos dados.
+    if (
+      !/^\d{17,20}$/.test(userId) ||
+      !/^\d{17,20}$/.test(sourceChannelId) ||
+      !username
+    ) {
+      console.error(
+        '[ARCLO] Dados inválidos na solicitação de ticket.'
+      );
+
+      return;
+    }
+
+    const guild =
+      message.guild;
+
+    if (!guild) {
+      return;
+    }
+
+    // Confirma que o canal de origem existe no servidor.
+    const sourceChannel =
+      await guild.channels.fetch(
+        sourceChannelId
+      ).catch(() => null);
+
+    if (!sourceChannel) {
+      console.error(
+        '[ARCLO] Canal de origem não encontrado:',
+        sourceChannelId
+      );
+
+      return;
+    }
+
+    // Busca o membro real pelo ID.
+    const member =
+      await guild.members.fetch(
+        userId
+      ).catch(() => null);
+
+    if (!member) {
+      console.error(
+        '[ARCLO] Usuário não encontrado:',
+        userId
+      );
+
+      return;
+    }
+
+    console.log(
+      '[ARCLO] Solicitação recebida:',
+      member.user.tag
+    );
+
+    // Horário de funcionamento: 06h às 22h.
+    const agora =
+      new Date();
+
+    const horas =
+      (
+        agora.getUTCHours() - 3 + 24
+      ) % 24;
+
+    if (
+      horas < 6 ||
+      horas >= 22
+    ) {
+      await member.send(
+        '🌙 **Atendimento encerrado.** Funcionamento: **06:00 às 22:00**.'
+      ).catch(() => {});
+
+      return;
+    }
+
+    // Verifica blacklist.
+    if (
+      blacklist.has(member.user.username) ||
+      blacklist.has(member.id)
+    ) {
+      await member.send(
+        '❌ Você está bloqueado de abrir tickets.'
+      ).catch(() => {});
+
+      return;
+    }
+
+    // Verifica tickets já existentes.
+    const nomeCanal =
+      `ticket-${member.user.username}`.toLowerCase();
+
+    const existente =
+      guild.channels.cache.find(
+        c => c.name === nomeCanal
+      );
+
+    if (existente) {
+      console.log(
+        '[ARCLO] Usuário já possui ticket:',
+        existente.id
+      );
+
+      return;
+    }
+
+    // Cooldown de 60 segundos.
+    const ultimo =
+      Number(
+        cooldownTickets.get(member.id) || 0
+      );
+
+    const restante =
+      60000 - (Date.now() - ultimo);
+
+    if (
+      ultimo &&
+      restante > 0
+    ) {
+      console.log(
+        '[ARCLO] Solicitação duplicada ou em cooldown:',
+        member.id
+      );
+
+      return;
+    }
+
+    // Marca o cooldown antes de criar o canal.
+    // Isso impede duas mensagens do Arclo de
+    // criarem dois tickets simultaneamente.
+    cooldownTickets.set(
+      member.id,
+      Date.now()
+    );
+
+    syncDB();
+
+    // Usa a categoria do canal onde a pessoa clicou.
+    const parentCategory =
+      sourceChannel.parentId || null;
+
+    // Cria o ticket.
+    const channel =
+      await guild.channels.create({
+        name: nomeCanal,
+
+        type: ChannelType.GuildText,
+
+        parent: parentCategory,
+
+        permissionOverwrites: [
+          {
+            id: guild.id,
+
+            deny: [
+              PermissionFlagsBits.ViewChannel
+            ]
+          },
+
+          {
+            id: member.id,
+
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory
+            ]
+          },
+
+          {
+            id: ID_DONO,
+
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory
+            ]
+          },
+
+          {
+            id: ID_CARGO_ADMIN,
+
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory
+            ]
+          }
+        ]
+      });
+
+    // Registra o ticket no banco do RD4X.
+    ticketsAtivos.set(
+      channel.id,
+      {
+        userId: member.id,
+
+        username: member.user.username,
+
+        status: 'aberto',
+
+        prioridade: 'normal',
+
+        pagamento: 'aguardando_comprovante',
+
+        tags: ['venda'],
+
+        notas: [],
+
+        logs: [],
+
+        ultimoContato: Date.now(),
+
+        avisoInatividade: false
+      }
+    );
+
+    syncDB();
+
+    // Mensagem inicial.
+    await channel.send({
+      content:
+        `<@${member.id}>\n\n` +
+        `💳 **Para adquirir seu Painel Admin**\n\n` +
+        `Envie o PIX para:\n` +
+        `\`${CHAVE_PIX}\`\n\n` +
+        `Depois envie seu **nick do Roblox**, **plano/duração** e o **comprovante de pagamento**.`,
+
+      allowedMentions: {
+        users: [member.id]
+      }
+    });
+
+    // Aviso para a equipe.
+    await channel.send({
+      content:
+        `Aguarde a análise do comprovante. <@&${ID_CARGO_ADMIN}>`,
+
+      allowedMentions: {
+        roles: [ID_CARGO_ADMIN]
+      }
+    });
+
+    // Log interno do RD4X.
+    await registrarLogTicket(
+      guild,
+      channel.id,
+      nomeCanal,
+      `<@${member.id}>`,
+      '🟢 Ticket criado pelo Arclo.',
+      0xff0033
+    );
+
+    audit(
+      member.user.tag,
+      'ticket_create',
+      channel.id,
+      {
+        source: 'ARCLO'
+      }
+    );
+
+    console.log(
+      '[ARCLO] Ticket criado com sucesso:',
+      channel.id
+    );
+
+  } catch (error) {
+
+    console.error(
+      '[ARCLO] Erro ao criar ticket:',
+      error
+    );
+
+  }
+
+  return;
 }
 
+// ========================================================
+// BLOQUEIO DE OUTROS BOTS
+// ========================================================
+
+if (
+  message.author.bot
+) {
+  return;
+}
 if (
   message.channel.name?.startsWith(
     'ticket-'
