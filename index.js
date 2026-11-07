@@ -5775,12 +5775,14 @@ ticketsAtivos.set(
     prioridade:
       'normal',
 
-    pagamento:
-      'aguardando_comprovante',
+        tipo: modalidade,
 
-    tags:[
-      'venda'
-    ],
+    pagamento:
+      modalidade === 'compras'
+        ? 'aguardando_comprovante'
+        : null,
+
+    tags: [modalidade],
 
     notas:[],
 
