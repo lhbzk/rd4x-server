@@ -5605,6 +5605,45 @@ if (
         ephemeral: true
       });
     }
+  
+// RESETAR O MENU APÓS CADA SELEÇÃO
+const menuReset = new StringSelectMenuBuilder()
+  .setCustomId('criar_ticket')
+  .setPlaceholder('🎟️ Selecione o tipo de atendimento')
+  .addOptions(
+    {
+      label: 'Sistema de Compras',
+      description: 'Adquirir ou renovar seu Painel Admin.',
+      value: 'compras',
+      emoji: '🛒'
+    },
+    {
+      label: 'Reports',
+      description: 'Denunciar jogadores ou situações.',
+      value: 'reports',
+      emoji: '🚨'
+    },
+    {
+      label: 'Reclamações',
+      description: 'Registrar uma reclamação.',
+      value: 'reclamacoes',
+      emoji: '⚠️'
+    },
+    {
+      label: 'Atendimento Geral',
+      description: 'Falar com nossa equipe.',
+      value: 'geral',
+      emoji: '💬'
+    }
+  );
+
+const rowReset = new ActionRowBuilder()
+  .addComponents(menuReset);
+
+await interaction.message.edit({
+  components: [rowReset]
+}).catch(() => {});
+  
     // código atual de criação do ticket...
   const guild =
   interaction.guild;
