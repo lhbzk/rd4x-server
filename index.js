@@ -5582,12 +5582,29 @@ if (
 
 // código atual de criação do ticket...
 
-    if (
+        if (
+      !interaction.isStringSelectMenu() ||
       interaction.customId !== 'criar_ticket'
     ) {
       return;
     }
 
+    const modalidade =
+      interaction.values[0];
+
+    const modalidadesValidas = [
+      'compras',
+      'reports',
+      'reclamacoes',
+      'geral'
+    ];
+
+    if (!modalidadesValidas.includes(modalidade)) {
+      return interaction.reply({
+        content: '❌ Modalidade inválida.',
+        ephemeral: true
+      });
+    }
     // código atual de criação do ticket...
   const guild =
   interaction.guild;
