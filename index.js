@@ -4988,11 +4988,11 @@ if (comando === '!painel') {
   const embed = new EmbedBuilder()
     .setColor(0xFF0000)
     .setTitle(
-      `${message.guild.name} OFICIAL\nTICKETS`
+      `${message.guild.name} SUPORTE\nTICKETS`
     )
     .setDescription(
-      '>>> **Quer Adquirir Seu Painel Admin?**\n\n' +
-      '>>> **Para começar seu atendimento, Clique no botão abaixo e aguarde a Resposta dos Admins.**\n\n' +
+      '## **Suporte**\n\n' +
+  '>>> **Para começar seu atendimento, selecione uma das opções abaixo e aguarde a resposta dos administradores.**\n\n' +
       '**Clique Aqui ↓**'
     )
     .setImage(
