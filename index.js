@@ -4999,14 +4999,40 @@ if (comando === '!painel') {
       'https://i.ibb.co/MD37N7Wk/lv-0-20261104110433.jpg'
     );
 
-  const row = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('criar_ticket')
-        .setLabel('Ticket')
-        .setEmoji('🎟️')
-        .setStyle(ButtonStyle.Danger)
+  
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('criar_ticket')
+    .setPlaceholder('🎟️ Selecione o tipo de atendimento')
+    .addOptions(
+      {
+        label: 'Sistema de Compras',
+        description: 'Adquirir ou renovar seu Painel Admin.',
+        value: 'compras',
+        emoji: '🛒'
+      },
+      {
+        label: 'Reports',
+        description: 'Denunciar jogadores ou situações.',
+        value: 'reports',
+        emoji: '🚨'
+      },
+      {
+        label: 'Reclamações',
+        description: 'Registrar uma reclamação.',
+        value: 'reclamacoes',
+        emoji: '⚠️'
+      },
+      {
+        label: 'Atendimento Geral',
+        description: 'Falar com nossa equipe.',
+        value: 'geral',
+        emoji: '💬'
+      }
     );
+
+  const row = new ActionRowBuilder()
+    .addComponents(menu);
+
 
   await message.delete().catch(() => {});
 
