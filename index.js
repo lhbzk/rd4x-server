@@ -2,6 +2,7 @@ const {
   Client,
   GatewayIntentBits,
   ActionRowBuilder,
+  StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
