@@ -5798,31 +5798,42 @@ ticketsAtivos.set(
 
 syncDB();
 
+
+const mensagensModalidade = {
+  compras:
+    `💳 **Sistema de Compras**\n\n` +
+    `Para adquirir seu Painel Admin, envie o PIX para:\n` +
+    `\`${CHAVE_PIX}\`\n\n` +
+    `Depois informe seu **nick do Roblox**, **plano/duração** e envie o **comprovante de pagamento**.`,
+
+  reports:
+    `🚨 **Sistema de Reports**\n\n` +
+    `Descreva detalhadamente sua denúncia.\n\n` +
+    `Informe o usuário envolvido, explique o ocorrido e envie provas, como imagens ou vídeos, se possível.`,
+
+  reclamacoes:
+    `⚠️ **Reclamações**\n\n` +
+    `Conte detalhadamente o motivo da sua reclamação.\n\n` +
+    `Explique o que aconteceu e envie imagens ou outras evidências, caso tenha.`,
+
+  geral:
+    `💬 **Atendimento Geral**\n\n` +
+    `Olá! Como podemos ajudar?\n\n` +
+    `Descreva sua dúvida ou solicitação para que nossa equipe possa atendê-lo.`
+};
+
 await channel.send({
   content:
     `<@${member.user.id}>\n\n` +
-    `💳 **Para adquirir seu Painel Admin**\n\n` +
-    `Envie o PIX para:\n` +
-    `\`${CHAVE_PIX}\`\n\n` +
-    `Depois envie seu **nick do Roblox**, **plano/duração** e o **comprovante de pagamento**.`,
+    mensagensModalidade[modalidade] +
+    `\n\nAguarde o atendimento da nossa equipe. <@&${ID_CARGO_ADMIN}>`,
 
-  allowedMentions:{
-    users:[
-      member.user.id
-    ]
+  allowedMentions: {
+    users: [member.user.id],
+    roles: [ID_CARGO_ADMIN]
   }
 });
 
-await channel.send({
-  content:
-    `Aguarde a análise do comprovante. <@&${ID_CARGO_ADMIN}>`,
-
-  allowedMentions:{
-    roles:[
-      ID_CARGO_ADMIN
-    ]
-  }
-});
 
 await registrarLogTicket(
   guild,
