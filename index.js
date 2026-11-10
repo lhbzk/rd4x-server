@@ -3136,8 +3136,13 @@ try {
       ),
       {
         body: [
-          command.toJSON()
-        ]
+  command.toJSON(),
+
+  new SlashCommandBuilder()
+    .setName('convite')
+    .setDescription('Gera um convite permanente do servidor.')
+    .toJSON()
+]
       }
     );
   }
@@ -5314,6 +5319,107 @@ return interaction.reply({
     });
   }
 }
+  
+// ============================================================
+// CONVITE PERMANENTE — RD4X
+// ============================================================
+
+if (
+  interaction.isChatInputCommand() &&
+  interaction.commandName === 'convite'
+) {
+  try {
+    if (
+      !isAdmin(
+        interaction.member,
+        interaction.user.id
+      )
+    ) {
+      return interaction.reply({
+        content: '❌ Apenas administradores podem gerar convites.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({
+      ephemeral: true
+    });
+
+    const guild = interaction.guild;
+
+    if (!guild) {
+      return interaction.editReply(
+        '❌ Este comando só pode ser usado dentro de um servidor.'
+      );
+    }
+
+    const canais = await guild.channels.fetch();
+
+    const canal =
+      guild.systemChannel &&
+      guild.systemChannel
+        .permissionsFor(client.user)
+        ?.has(PermissionFlagsBits.CreateInstantInvite)
+        ? guild.systemChannel
+        : canais.find(c =>
+            c &&
+            c.type === ChannelType.GuildText &&
+            c.permissionsFor(client.user)
+              ?.has(PermissionFlagsBits.CreateInstantInvite)
+          );
+
+    if (!canal) {
+      return interaction.editReply(
+        '❌ Não encontrei um canal onde o RD4X possa criar convites.'
+      );
+    }
+
+    const invite = await canal.createInvite({
+      maxAge: 0,
+      maxUses: 0,
+      temporary: false,
+      unique: true,
+      reason: 'Convite permanente gerado pelo RD4X'
+    });
+
+    audit(
+      interaction.user.tag,
+      'permanent_invite_created',
+      guild.id,
+      {
+        inviteCode: invite.code,
+        channelId: canal.id
+      }
+    );
+
+    return interaction.editReply({
+      content:
+        '🔗 **Convite permanente do RD4X Team**\n\n' +
+        `https://discord.gg/${invite.code}\n\n` +
+        '♾️ **Validade:** Permanente\n' +
+        '👥 **Limite de usos:** Ilimitado\n' +
+        '🤖 **Criado por:** RD4X'
+    });
+
+  } catch (error) {
+    console.error('[CONVITE]', error);
+
+    if (
+      interaction.deferred ||
+      interaction.replied
+    ) {
+      return interaction.editReply(
+        '❌ Erro ao gerar o convite permanente.'
+      );
+    }
+
+    return interaction.reply({
+      content: '❌ Erro ao gerar o convite permanente.',
+      ephemeral: true
+    });
+  }
+}
+  
 // ============================================================
 // GERAR PRODUCT KEY — DASHBOARD
 // ============================================================
