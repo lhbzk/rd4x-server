@@ -3062,6 +3062,58 @@ data: []
 // ============================================================
 // SERVIDOR WEB
 // ============================================================
+// ============================================================
+// MENSAGEM GLOBAL — ABA EXCLUSIVA DO CRIADOR (ROBLOX ID: 4200878493)
+// ============================================================
+
+const CREATOR_ROBLOX_ID = 4200878493;
+
+let ultimoAvisoGlobal = {
+  id: '0',
+  title: '📢 Aviso Admins',
+  message: '',
+  duration: 6
+};
+
+// Rota que todos os scripts Lua consultam via GET
+app.get('/api/v2/global-message', (req, res) => {
+  return res.json({
+    success: true,
+    data: ultimoAvisoGlobal
+  });
+});
+
+// Rota que a aba exclusiva do Creator chama via POST
+app.post('/api/v2/global-message', (req, res) => {
+  const { userId, id, title, message, duration } = req.body || {};
+
+  if (Number(userId) !== CREATOR_ROBLOX_ID) {
+    return res.status(403).json({
+      success: false,
+      error: 'Apenas o criador pode enviar mensagem global.'
+    });
+  }
+
+  const textoLimpo = String(message || '').trim();
+  if (!textoLimpo) {
+    return res.status(400).json({
+      success: false,
+      error: 'A mensagem não pode estar vazia.'
+    });
+  }
+
+  ultimoAvisoGlobal = {
+    id: String(id || Date.now()),
+    title: String(title || '📢 Aviso Admins').trim() || '📢 Aviso Admins',
+    message: textoLimpo,
+    duration: Number(duration) || 6
+  };
+
+  return res.json({
+    success: true,
+    data: ultimoAvisoGlobal
+  });
+});
 
 app.listen(
 port,
