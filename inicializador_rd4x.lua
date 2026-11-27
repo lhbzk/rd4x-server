@@ -297,12 +297,13 @@ task.spawn(function()
         tw(close, 0.12, {ImageColor3 = CINZA})
     end)
 
-    criar("Frame", {
+    local divisor = criar("Frame", {
         Position = UDim2.new(0, 18, 0, 70),
         Size = UDim2.new(1, -36, 0, 1),
         BackgroundColor3 = BORDA,
         BorderSizePixel = 0
     }, main)
+    round(divisor, 1)
 
     -- Identificação do jogo
     local statusJogo = criar("Frame", {
